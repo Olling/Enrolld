@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/sha1"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,39 +11,17 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
-	"sort"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
 	"github.com/Olling/Enrolld/api"
 	"github.com/Olling/Enrolld/config"
+	"github.com/Olling/Enrolld/utils"
+	"github.com/Olling/Enrolld/output"
 )
 
-type ServerInfo struct {
-	FQDN              string
-	IP                string
-	LastSeen          string
-	NewServer         string `json:"NewServer,omitempty"`
-	Inventories       []string
-	AnsibleProperties map[string]string
-}
 
-type TargetList struct {
-	Targets []string          `json:"targets"`
-	Labels  map[string]string `json:"labels"`
-}
-
-func (server ServerInfo) Exist() bool {
-	_, existsErr := os.Stat(config.Configuration.Path + "/" + server.FQDN)
-
-	if os.IsNotExist(existsErr) {
-		return false
-	} else {
-		return true
-	}
-}
 
 // type Configuration struct {
 // 	Path                   string
@@ -67,191 +44,11 @@ func (server ServerInfo) Exist() bool {
 var (
 	infolog               *log.Logger
 	errorlog              *log.Logger
-	syncOutputMutex       sync.Mutex
-	syncGetInventoryMutex sync.Mutex
 )
 
-func CategorizeInventories(inventories []ServerInfo) ([]string, map[string][]ServerInfo) {
-	keys := make([]string, 0)
-	results := make(map[string][]ServerInfo)
-
-	for _, inventory := range inventories {
-		for _, foundInventoryName := range inventory.Inventories {
-			if results[foundInventoryName] != nil {
-				results[foundInventoryName] = append(results[foundInventoryName], inventory)
-			} else {
-				keys = append(keys, foundInventoryName)
-				results[foundInventoryName] = []ServerInfo{inventory}
-			}
-		}
-	}
-
-	return keys, results
-}
-
-func GetInventoryInJSON(inventories []ServerInfo) (string, error) {
-	inventoryjson := "{"
-
-	keys, inventoryMap := CategorizeInventories(inventories)
-
-	inventoryjson += "\n\t\"" + config.Configuration.DefaultInventoryName + "\"\t: {\n\t\"hosts\"\t: ["
-	for _, inventory := range inventories {
-		inventoryjson += "\"" + inventory.FQDN + "\", "
-	}
-	inventoryjson = strings.TrimSuffix(inventoryjson, ", ")
-	inventoryjson += "]\n\t},"
-
-	for _, key := range keys {
-		inventoryjson += "\n\t\"" + key + "\"\t: {\n\t\"hosts\"\t: ["
-		for _, inventory := range inventoryMap[key] {
-			inventoryjson += "\"" + inventory.FQDN + "\", "
-		}
-		inventoryjson = strings.TrimSuffix(inventoryjson, ", ")
-		inventoryjson += "]\n\t},"
-	}
-
-	inventoryjson += "\n\t\"_meta\" : {\n\t\t\"hostvars\" : {"
-
-	for _, server := range inventories {
-		if len(server.AnsibleProperties) != 0 {
-			propertiesjsonbytes, err := json.Marshal(server.AnsibleProperties)
-			if err != nil {
-				errorlog.Println("Error in converting map to json", err)
-			} else {
-				propertiesjson := string(propertiesjsonbytes)
-				propertiesjson = strings.TrimPrefix(propertiesjson, "{")
-				propertiesjson = strings.TrimSuffix(propertiesjson, "}")
-				inventoryjson += "\n\t\t\t\"" + server.FQDN + "\": {\n\t\t\t\t" + propertiesjson + "\n\t\t\t},"
-			}
-		}
-	}
-
-	inventoryjson = strings.TrimSuffix(inventoryjson, ",")
-	inventoryjson += "\n\t\t}\n\t}\n}"
-
-	return inventoryjson, nil
-}
-
-func GetTargetsInJSON(servers []ServerInfo) (string, error) {
-	entriesmap := make(map[string]TargetList)
-
-	for _, server := range servers {
-		if config.Configuration.TargetsPort != "" {
-			server.FQDN = server.FQDN + ":" + config.Configuration.TargetsPort
-		}
-
-		var entry TargetList
-		entry.Targets = []string{server.FQDN}
-		if server.AnsibleProperties != nil {
-			entry.Labels = server.AnsibleProperties
-		} else {
-			entry.Labels = make(map[string]string)
-		}
-
-		inventories := strings.Join(server.Inventories, ", ")
-		entry.Labels["inventories"] = inventories
-
-		var label string
-		if len(entry.Labels) == 0 {
-			label = "nolabels"
-		} else {
-			sha1calc := sha1.New()
-
-			var keys []string
-			for key, _ := range entry.Labels {
-				keys = append(keys, key)
-			}
-			sort.Strings(keys)
-
-			for _, key := range keys {
-				io.WriteString(sha1calc, key+":"+entry.Labels[key])
-			}
-			label = fmt.Sprintf("%x", sha1calc.Sum(nil))
-		}
-
-		_, keyexists := entriesmap[label]
-		if keyexists {
-			tempentry := entriesmap[label]
-			tempentry.Targets = append(tempentry.Targets, entry.Targets...)
-			entriesmap[label] = tempentry
-		} else {
-			entriesmap[label] = entry
-		}
-	}
-
-	var entries []TargetList
-	for _, value := range entriesmap {
-		entries = append(entries, value)
-	}
-	entriesjson, err := ToJson(entries)
-
-	return entriesjson, err
-}
-
-func GetInventory(path string) ([]ServerInfo, error) {
-	var inventories []ServerInfo
-
-	filelist, filelisterr := ioutil.ReadDir(path)
-	if filelisterr != nil {
-		errorlog.Println(filelisterr)
-		return nil, filelisterr
-	}
-
-	syncGetInventoryMutex.Lock()
-	defer syncGetInventoryMutex.Unlock()
-
-	for _, child := range filelist {
-		if child.IsDir() == false {
-			file, fileerr := os.Open(path + "/" + child.Name())
-
-			if fileerr != nil {
-				errorlog.Println("Error while reading file", path+"/"+child.Name(), "Reason:", fileerr)
-				continue
-			}
-
-			decoder := json.NewDecoder(file)
-			var inventory ServerInfo
-			err := decoder.Decode(&inventory)
-
-			if err != nil {
-				errorlog.Println("Error while decoding file", path+"/"+child.Name(), "Reason:", err)
-			} else {
-				layout := "2006-01-02 15:04:05.999999999 -0700 MST"
-
-				if strings.Contains(inventory.LastSeen, "m=") {
-					inventory.LastSeen = strings.Split(inventory.LastSeen, " m=")[0]
-				}
-
-				date, parseErr := time.Parse(layout, inventory.LastSeen)
-
-				if parseErr != nil {
-					errorlog.Println("Could not parse date")
-					errorlog.Println(parseErr)
-				}
-
-				date = date.AddDate(0, 0, config.Configuration.MaxAgeInDays)
-
-				if date.After(time.Now()) {
-					inventories = append(inventories, inventory)
-				}
-			}
-		}
-	}
-	return inventories, nil
-}
-
-func ToJson(s interface{}) (string, error) {
-	bytes, marshalErr := json.MarshalIndent(s, "", "\t")
-	return string(bytes), marshalErr
-}
-
-func FromJson(input string, output interface{}) error {
-	return json.Unmarshal([]byte(input), &output)
-}
-
-func WriteToFile(server ServerInfo, path string, append bool) (err error) {
-	syncOutputMutex.Lock()
-	defer syncOutputMutex.Unlock()
+func WriteToFile(server utils.ServerInfo, path string, append bool) (err error) {
+	utils.SyncOutputMutex.Lock()
+	defer utils.SyncOutputMutex.Unlock()
 
 	server.NewServer = ""
 	bytes, marshalErr := json.MarshalIndent(server, "", "\t")
@@ -296,7 +93,7 @@ func checkScriptPath() (err error) {
 	return nil
 }
 
-func callEnrolldScript(server ServerInfo) (err error) {
+func callEnrolldScript(server utils.ServerInfo) (err error) {
 	scriptPathErr := checkScriptPath()
 
 	if scriptPathErr != nil {
@@ -326,7 +123,7 @@ func callEnrolldScript(server ServerInfo) (err error) {
 			}
 		}
 
-		json, _ := GetInventoryInJSON([]ServerInfo{server})
+		json, _ := output.GetInventoryInJSON([]utils.ServerInfo{server})
 		json = strings.Replace(json, "\"", "\\\"", -1)
 
 		ioutil.WriteFile(tempDirectory+"/singledynamicinventory", []byte("#!/bin/bash\necho \""+json+"\""), 0755)
@@ -373,9 +170,11 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		switch r.URL.Path {
 		case "/inventory":
-			httpGetInventory(w, r)
+			//httpGetInventory(w, r)
+			fmt.Println("NOPE")
 		case "/targets":
-			httpGetTargets(w, r)
+			//httpGetTargets(w, r)
+			fmt.Println("NOPE")
 		default:
 			fmt.Fprintf(w, "running")
 		}
@@ -384,46 +183,10 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func httpGetInventory(w http.ResponseWriter, r *http.Request) {
-	inventories, inventorieserr := GetInventory(config.Configuration.Path)
-
-	if inventorieserr != nil {
-		errorlog.Println(inventorieserr)
-		http.Error(w, http.StatusText(500), 500)
-	}
-
-	inventory, inventoryErr := GetInventoryInJSON(inventories)
-	if inventoryErr != nil {
-		errorlog.Println("Error")
-		http.Error(w, http.StatusText(500), 500)
-		return
-	}
-
-	fmt.Fprintf(w, inventory)
-}
-
-func httpGetTargets(w http.ResponseWriter, r *http.Request) {
-	servers, getErr := GetInventory(config.Configuration.Path)
-
-	if getErr != nil {
-		errorlog.Println(getErr)
-		http.Error(w, http.StatusText(500), 500)
-	}
-
-	targets, targetsErr := GetTargetsInJSON(servers)
-	if targetsErr != nil {
-		errorlog.Println(targetsErr)
-		http.Error(w, http.StatusText(500), 500)
-		return
-	}
-
-	fmt.Fprintf(w, targets)
-}
-
 func httpPost(w http.ResponseWriter, r *http.Request) {
 	requestIP, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err == nil {
-		var server ServerInfo
+		var server utils.ServerInfo
 
 		if r.FormValue("FQDN") != "" {
 			server.FQDN = r.FormValue("FQDN")
@@ -568,7 +331,7 @@ func initializeLogging(infologHandle io.Writer, errorlogHandle io.Writer) {
 	infolog.Println("Logging Initialized")
 }
 
-func notification(subject string, message string, server ServerInfo) {
+func notification(subject string, message string, server utils.ServerInfo) {
 	binary, err := exec.LookPath(config.Configuration.NotificationScriptPath)
 	if err != nil {
 		errorlog.Println("Could not find the notification script in the given path", config.Configuration.NotificationScriptPath, err)

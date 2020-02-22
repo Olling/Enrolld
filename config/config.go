@@ -13,7 +13,7 @@ type configuration struct {
 	TempPath               string
 	LogPath                string
 	Port                   string
-	MaxAgeInDays           int
+	MaxAgeInMinutes        int
 	DefaultInventoryName   string
 
 	TargetsPort string
