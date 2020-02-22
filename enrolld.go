@@ -339,12 +339,4 @@ func main() {
 
 	//metrics.Init()
 	api.SetupRouter()
-	// http.HandleFunc("/", httpHandler)
-
-	// go http.ListenAndServe(":"+configuration.Port, nil)
-	// tlserr := http.ListenAndServeTLS(":"+configuration.TlsPort, configuration.TlsCert, configuration.TlsKey, nil)
-	// if tlserr != nil {
-	// 	errorlog.Println("Error starting TLS: ", tlserr)
-	// }
-	// errorlog.Println("Error happend while serving port")
 }

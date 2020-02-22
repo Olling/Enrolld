@@ -9,6 +9,7 @@ import (
 	l "github.com/Olling/Enrolld/logging"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // SetupRouter initializes the API routes
@@ -26,6 +27,9 @@ func SetupRouter() {
 	router.HandleFunc("/label", addLabel).Methods("POST")
 	router.HandleFunc("/targets", getTargets).Methods("GET")
 	router.HandleFunc("/inventory", getInventory).Methods("GET")
+
+	// add prometheus handler
+	router.Handle("/metrics", promhttp.Handler())
 
 	// enable logging
 	loggedRouter := handlers.CombinedLoggingHandler(os.Stdout, router)

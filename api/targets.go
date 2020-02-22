@@ -3,21 +3,22 @@ package api
 import (
 	"fmt"
 	"net/http"
+
 	"github.com/Olling/Enrolld/output"
 )
 
 func getTargets(w http.ResponseWriter, r *http.Request) {
-	servers, getErr := output.GetInventory()
+	servers, err := output.GetInventory()
 
-	if getErr != nil {
-		fmt.Println(getErr)
-		http.Error(w, http.StatusText(500), 500)
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, http.StatusText(500), http.StatusInternalServerError)
 	}
 
-	targets, targetsErr := output.GetTargetsInJSON(servers)
-	if targetsErr != nil {
-		fmt.Println(targetsErr)
-		http.Error(w, http.StatusText(500), 500)
+	targets, err := output.GetTargetsInJSON(servers)
+	if err = nil {
+		fmt.Println(err)
+		http.Error(w, http.StatusText(500), http.StatusInternalServerError)
 		return
 	}
 
