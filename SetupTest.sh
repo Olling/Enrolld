@@ -1,6 +1,6 @@
 #/bin/bash
 
-counter=4000
+counter=40000
 path=$1
 
 if [ "$path" == "" ]

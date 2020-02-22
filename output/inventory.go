@@ -76,7 +76,7 @@ func GetInventoryInJSON(inventories []utils.ServerInfo) (string, error) {
 
 func GetServer(serverName string) (server utils.ServerInfo, err error) {
 	file, err := os.Open(config.Configuration.Path + "/" + serverName)
-
+	defer file.Close()
 	if err != nil {
 		return server,err
 	}
@@ -84,6 +84,7 @@ func GetServer(serverName string) (server utils.ServerInfo, err error) {
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(&server)
 
+	file.Close()
 	if err != nil {
 		return server, err
 	} else {
@@ -109,6 +110,15 @@ func GetServer(serverName string) (server utils.ServerInfo, err error) {
 	}
 }
 
+
+func GetInventoryCount() float64 {
+	filelist, filelisterr := ioutil.ReadDir(config.Configuration.Path)
+	if filelisterr != nil {
+		return 0
+	}
+
+	return float64(len(filelist))
+}
 
 func GetInventory() ([]utils.ServerInfo, error) {
 	var inventory []utils.ServerInfo

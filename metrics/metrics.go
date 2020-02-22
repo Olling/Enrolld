@@ -23,12 +23,5 @@ var (
 		Subsystem: "enrolld",
 		Name:      "servers_in_inventory",
 		Help:      "Total amount of servers in inventory",
-	},
-		func() float64 {
-				inventory, err := output.GetInventory()
-				if err != nil {
-					return 0
-				}
-				return float64(len(inventory))
-		})
+	}, output.GetInventoryCount)
 )
