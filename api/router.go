@@ -22,7 +22,7 @@ func SetupRouter() {
 	router.HandleFunc("/server", deleteServer).Methods("DELETE")
 	router.HandleFunc("/label", getLabel).Methods("GET")
 	router.HandleFunc("/label", addLabel).Methods("POST")
-	router.HandleFunc("/targets", rootHandler).Methods("GET")
+	router.HandleFunc("/targets", getTargets()).Methods("GET")
 	router.HandleFunc("/inventory", rootHandler).Methods("GET")
 
 	// enable logging
