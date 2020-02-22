@@ -12,13 +12,13 @@ func getTargets(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		fmt.Println(err)
-		http.Error(w, http.StatusText(500), 500)
+		http.Error(w, http.StatusText(500), http.StatusInternalServerError)
 	}
 
-	targets, targetsErr := output.GetTargetsInJSON(servers)
+	targets, err := output.GetTargetsInJSON(servers)
 	if err = nil {
 		fmt.Println(err)
-		http.Error(w, http.StatusText(500), 500)
+		http.Error(w, http.StatusText(500), http.StatusInternalServerError)
 		return
 	}
 
