@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -17,17 +16,15 @@ import (
 
 	"github.com/Olling/Enrolld/api"
 	"github.com/Olling/Enrolld/config"
-	"github.com/Olling/Enrolld/utils"
-	"github.com/Olling/Enrolld/output"
 	l "github.com/Olling/Enrolld/logging"
 	"github.com/Olling/Enrolld/metrics"
+	"github.com/Olling/Enrolld/output"
+	"github.com/Olling/Enrolld/utils"
 )
 
-
-
-func WriteToFile(server ServerInfo, path string, append bool) (err error) {
-	syncOutputMutex.Lock()
-	defer syncOutputMutex.Unlock()
+func WriteToFile(server utils.ServerInfo, path string, append bool) (err error) {
+	utils.SyncOutputMutex.Lock()
+	defer utils.SyncOutputMutex.Unlock()
 
 	server.NewServer = ""
 	bytes, marshalErr := json.MarshalIndent(server, "", "\t")
