@@ -2,8 +2,9 @@ package config
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
+
+	l "github.com/Olling/Enrolld/logging"
 )
 
 type configuration struct {
@@ -32,8 +33,8 @@ func InitializeConfiguration(path string) {
 	err := json.NewDecoder(file).Decode(&Configuration)
 	if err != nil {
 		// needs looging (errorlog)
-		fmt.Println("Error while reading the configuration file - Exiting")
-		fmt.Println(err)
+		l.ErrorLog.Println("Error while reading the configuration file - Exiting")
+		l.ErrorLog.Println(err)
 		os.Exit(1)
 	}
 
@@ -42,9 +43,9 @@ func InitializeConfiguration(path string) {
 	if os.IsNotExist(err) {
 		err := os.MkdirAll(Configuration.Path, 0744)
 		if err != nil {
-			fmt.Println(err)
+			l.ErrorLog.Println(err)
 		} else {
-			fmt.Println("Created: " + Configuration.Path)
+			l.InfoLog.Println("Created: " + Configuration.Path)
 		}
 	}
 }
