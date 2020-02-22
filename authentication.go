@@ -1,15 +1,10 @@
 package main
 
 import (
-	"os"
-	"fmt"
-	"net/url"
 	"net/http"
 	"io/ioutil"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
-	"net/http/httputil"
 	"github.com/olling/slog"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -33,18 +28,14 @@ import (
 //	ClientCert_CA string
 //}
 
-type BasicAuthCredential struct {
+type Credential struct {
 	Encrypted bool
 	Username string
 	Password string
 }
 
 
-func createTlsConfig(ClientCert_CA string) (tlsConfig tls.Config) {
-	if !configuration.ClientCert_Enabled {
-		return tlsConfig
-	}
-
+func CreateTlsConfig(ClientCert_CA string) (tlsConfig tls.Config) {
 	certBytes, err := ioutil.ReadFile(ClientCert_CA)
 	if err != nil {
 		slog.PrintFatal("Unable to read:", ClientCert_CA, err)
@@ -64,9 +55,9 @@ func createTlsConfig(ClientCert_CA string) (tlsConfig tls.Config) {
 }
 
 
-func Authenticate (Username string, Password string) bool {
+func Authenticate (username string, password string, credentials []Credential) bool {
 	authenticated := false
-	for _, cred := range Credentials {
+	for _, cred := range credentials {
 		if cred.Username != username {continue}
 
 		if cred.Encrypted {
@@ -84,7 +75,7 @@ func Authenticate (Username string, Password string) bool {
 }
 
 
-func BasicAuthenticate(w http.ResponseWriter, r *http.Request) bool {
+func BasicAuthenticate(w http.ResponseWriter, r *http.Request, credentials []Credential) bool {
 	w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
 
 	username, password, authOK := r.BasicAuth()
@@ -92,7 +83,7 @@ func BasicAuthenticate(w http.ResponseWriter, r *http.Request) bool {
 		return false
 	}
 
-	return Authenticate(username, password)
+	return Authenticate(username, password, credentials)
 }
 
 //	if ! basicAuthenticate(w, r, proxyTarget) {
