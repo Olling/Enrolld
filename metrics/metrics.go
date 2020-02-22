@@ -1,6 +1,10 @@
 package metrics
 
 import (
+	"os"
+	"path/filepath"
+
+	"github.com/Olling/Enrolld/config"
 	"github.com/Olling/Enrolld/output"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -37,5 +41,28 @@ var (
 				return 0
 			}
 			return float64(len(inventory))
+		})
+
+	DataUsage = promauto.NewGaugeFunc(prometheus.GaugeOpts{
+		Subsystem: "enrolld",
+		Name:      "data_usage",
+		Help:      "Data usage on the disk (bytes)",
+	},
+		func() float64 {
+			var size int64 = 0
+
+			readSize := func(path string, file os.FileInfo, err error) error {
+				// check if dir
+				if !file.IsDir() {
+					size += file.Size()
+				}
+
+				return nil
+			}
+
+			// recursive iterate
+			filepath.Walk(config.Configuration.Path, readSize)
+
+			return float64(size)
 		})
 )
