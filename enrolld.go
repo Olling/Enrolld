@@ -17,60 +17,14 @@ import (
 	"github.com/Olling/Enrolld/api"
 	"github.com/Olling/Enrolld/config"
 	l "github.com/Olling/Enrolld/logging"
-//	"github.com/Olling/Enrolld/metrics"
 	"github.com/Olling/Enrolld/output"
 	"github.com/Olling/Enrolld/utils"
+	"github.com/Olling/Enrolld/io"
 )
 
-func WriteToFile(server utils.ServerInfo, path string, append bool) (err error) {
-	utils.SyncOutputMutex.Lock()
-	defer utils.SyncOutputMutex.Unlock()
-
-	server.NewServer = ""
-	bytes, marshalErr := json.MarshalIndent(server, "", "\t")
-	if marshalErr != nil {
-		l.ErrorLog.Println("Error while converting to json")
-		return marshalErr
-	}
-	content := string(bytes)
-
-	if append {
-		file, fileerr := os.OpenFile(path, os.O_APPEND, 644)
-		defer file.Close()
-		if fileerr != nil {
-			return fileerr
-		}
-
-		_, writeerr := file.WriteString(content)
-		return writeerr
-	} else {
-		err := ioutil.WriteFile(path, []byte(content), 0644)
-		if err != nil {
-			l.ErrorLog.Println("Error while writing file")
-			l.ErrorLog.Println(err)
-			return err
-		}
-		return nil
-	}
-}
-
-func checkScriptPath() (err error) {
-	if config.Configuration.ScriptPath == "" {
-		l.ErrorLog.Println("ScriptPath is empty: \"" + config.Configuration.ScriptPath + "\"")
-		return fmt.Errorf("ScriptPath is empty")
-	} else {
-		_, existsErr := os.Stat(config.Configuration.ScriptPath)
-
-		if os.IsNotExist(existsErr) {
-			l.ErrorLog.Println("ScriptPath does not exist: \"" + config.Configuration.ScriptPath + "\"")
-			return fmt.Errorf("ScriptPath does not exist")
-		}
-	}
-	return nil
-}
 
 func callEnrolldScript(server utils.ServerInfo) (err error) {
-	scriptPathErr := checkScriptPath()
+	scriptPathErr := io.CheckScriptPath()
 
 	if scriptPathErr != nil {
 		return scriptPathErr
@@ -284,7 +238,7 @@ func httpPost(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var writeerr error
-		writeerr = WriteToFile(server, config.Configuration.Path+"/"+server.FQDN, false)
+		writeerr = io.WriteToFile(server, config.Configuration.Path+"/"+server.FQDN, false)
 
 		if writeerr != nil {
 			l.ErrorLog.Println("Write Error")
@@ -332,7 +286,7 @@ func main() {
 	l.InitializeLogging(os.Stdout, os.Stderr)
 	config.InitializeConfiguration("/etc/enrolld/enrolld.conf")
 
-	scriptPathErr := checkScriptPath()
+	scriptPathErr := io.CheckScriptPath()
 	if scriptPathErr != nil {
 		log.Fatal("ScriptPath Problem - stopping")
 	}

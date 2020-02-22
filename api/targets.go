@@ -16,7 +16,7 @@ func getTargets(w http.ResponseWriter, r *http.Request) {
 	}
 
 	targets, err := output.GetTargetsInJSON(servers)
-	if err = nil {
+	if err != nil {
 		fmt.Println(err)
 		http.Error(w, http.StatusText(500), http.StatusInternalServerError)
 		return

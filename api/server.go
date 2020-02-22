@@ -3,7 +3,6 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"encoding/json"
 	"github.com/gorilla/mux"
 	"github.com/Olling/Enrolld/metrics"
 	"github.com/Olling/Enrolld/output"

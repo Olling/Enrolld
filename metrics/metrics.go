@@ -26,7 +26,7 @@ var (
 	},
 		func() float64 {
 				inventory, err := output.GetInventory()
-				if err != {
+				if err != nil {
 					return 0
 				}
 				return float64(len(inventory))
