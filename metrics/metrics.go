@@ -19,18 +19,16 @@ var (
 		Name:      "server_updated_total",
 		Help:      "The total number of updated servers",
 	})
-	ServersInInventory = prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+	ServersInInventory = promauto.NewGaugeFunc(prometheus.GaugeOpts{
 		Subsystem: "enrolld",
 		Name:      "servers_in_inventory",
 		Help:      "Total amount of servers in inventory",
 	},
 		func() float64 {
-			return float64(
 				inventory, err := output.GetInventory()
 				if err != {
-					return
+					return 0
 				}
-				len(inventory)
-			)
+				return float64(len(inventory))
 		})
 )
