@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/Olling/Enrolld/config"
+	l "github.com/Olling/Enrolld/logging"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
@@ -29,13 +30,12 @@ func SetupRouter() {
 	loggedRouter := handlers.CombinedLoggingHandler(os.Stdout, router)
 
 	// needs infolog
-	fmt.Println("Listening on port: " + config.Configuration.Port + " (http) and port: " + config.Configuration.TlsPort + " (https)")
+	l.InfoLog.Println("Listening on port: " + config.Configuration.Port + " (http) and port: " + config.Configuration.TlsPort + " (https)")
 
 	go http.ListenAndServe(":"+config.Configuration.Port, loggedRouter)
 	err := http.ListenAndServeTLS(":"+config.Configuration.TlsPort, config.Configuration.TlsCert, config.Configuration.TlsKey, loggedRouter)
 	if err != nil {
-		// needs proper handling
-		fmt.Println("Error starting TLS: ", err)
+		l.ErrorLog.Println("Error starting TLS: ", err)
 	}
 }
 
