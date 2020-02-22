@@ -8,20 +8,14 @@ import (
 // Metric definintions
 var (
 	ServerAddedCounter = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "enrolld_server_added_total",
-		Help: "The total number of added servers",
+		Subsystem: "enrolld",
+		Name:      "server_added_total",
+		Help:      "The total number of added servers",
 	})
-)
 
-var (
 	ServerUpdatedCounter = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "enrolld_server_updated_total",
-		Help: "The total number of updated servers",
+		Subsystem: "enrolld",
+		Name:      "server_updated_total",
+		Help:      "The total number of updated servers",
 	})
 )
-
-// Init initializes and registers all prometheus metrics to be exposed
-func Init() {
-	prometheus.MustRegister(ServerAddedCounter)
-	prometheus.MustRegister(ServerUpdatedCounter)
-}
