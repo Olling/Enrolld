@@ -11,9 +11,7 @@ var (
 		Name: "enrolld_server_added_total",
 		Help: "The total number of added servers",
 	})
-)
 
-var (
 	ServerUpdatedCounter = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "enrolld_server_updated_total",
 		Help: "The total number of updated servers",
@@ -22,6 +20,5 @@ var (
 
 // Init initializes and registers all prometheus metrics to be exposed
 func Init() {
-	prometheus.MustRegister(ServerAddedCounter)
-	prometheus.MustRegister(ServerUpdatedCounter)
+	prometheus.MustRegister(ServerAddedCounter, ServerUpdatedCounter)
 }

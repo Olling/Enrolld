@@ -17,7 +17,7 @@ import (
 	"github.com/Olling/Enrolld/api"
 	"github.com/Olling/Enrolld/config"
 	l "github.com/Olling/Enrolld/logging"
-	"github.com/Olling/Enrolld/metrics"
+//	"github.com/Olling/Enrolld/metrics"
 	"github.com/Olling/Enrolld/output"
 	"github.com/Olling/Enrolld/utils"
 )
@@ -337,7 +337,7 @@ func main() {
 		log.Fatal("ScriptPath Problem - stopping")
 	}
 
-	metrics.Init()
+	//metrics.Init()
 	api.SetupRouter()
 	// http.HandleFunc("/", httpHandler)
 

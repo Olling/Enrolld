@@ -18,13 +18,14 @@ func SetupRouter() {
 	// api routes
 	router.HandleFunc("/", rootHandler)
 	router.HandleFunc("/server", getServer).Methods("GET")
+	router.HandleFunc("/server/{servername}", getServer).Methods("GET")
 	router.HandleFunc("/server", addServer).Methods("POST")
 	router.HandleFunc("/server", updateServer).Methods("PUT")
 	router.HandleFunc("/server", deleteServer).Methods("DELETE")
 	router.HandleFunc("/label", getLabel).Methods("GET")
 	router.HandleFunc("/label", addLabel).Methods("POST")
 	router.HandleFunc("/targets", getTargets).Methods("GET")
-	router.HandleFunc("/inventory", rootHandler).Methods("GET")
+	router.HandleFunc("/inventory", getInventory).Methods("GET")
 
 	// enable logging
 	loggedRouter := handlers.CombinedLoggingHandler(os.Stdout, router)

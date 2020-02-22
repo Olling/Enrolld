@@ -4,6 +4,7 @@ import (
 	"os"
 	"time"
 	"fmt"
+	"errors"
 	"strings"
 	"io/ioutil"
 	"encoding/json"
@@ -73,11 +74,46 @@ func GetInventoryInJSON(inventories []utils.ServerInfo) (string, error) {
 }
 
 
-func GetInventory() ([]utils.ServerInfo, error) {
-	path :=	config.Configuration.Path
-	var inventories []utils.ServerInfo
+func GetServer(serverName string) (server utils.ServerInfo, err error) {
+	file, err := os.Open(config.Configuration.Path + "/" + serverName)
 
-	filelist, filelisterr := ioutil.ReadDir(path)
+	if err != nil {
+		return server,err
+	}
+
+	decoder := json.NewDecoder(file)
+	err = decoder.Decode(&server)
+
+	if err != nil {
+		return server, err
+	} else {
+		layout := "2006-01-02 15:04:05.999999999 -0700 MST"
+
+		if strings.Contains(server.LastSeen, "m=") {
+			server.LastSeen = strings.Split(server.LastSeen, " m=")[0]
+		}
+
+		date, err := time.Parse(layout, server.LastSeen)
+
+		if err == nil {
+			return server, err
+		}
+
+		date = date.Add(time.Minute * time.Duration(config.Configuration.MaxAgeInMinutes))
+
+		if date.After(time.Now()) {
+			return server,nil
+		}
+
+		return server, errors.New("Server was beyond max age")
+	}
+}
+
+
+func GetInventory() ([]utils.ServerInfo, error) {
+	var inventory []utils.ServerInfo
+
+	filelist, filelisterr := ioutil.ReadDir(config.Configuration.Path)
 	if filelisterr != nil {
 		fmt.Println(filelisterr)
 		return nil, filelisterr
@@ -88,40 +124,16 @@ func GetInventory() ([]utils.ServerInfo, error) {
 
 	for _, child := range filelist {
 		if child.IsDir() == false {
-			file, fileerr := os.Open(path + "/" + child.Name())
+			server,err := GetServer(child.Name())
 
-			if fileerr != nil {
-				fmt.Println("Error while reading file", path+"/"+child.Name(), "Reason:", fileerr)
+			//err.Error??? TODO
+			if err != nil && err.Error() != "Server was beyond max age" {
+				fmt.Println("Error while reading file", config.Configuration.Path + "/" + child.Name(), "Reason:", err)
 				continue
 			}
 
-			decoder := json.NewDecoder(file)
-			var inventory utils.ServerInfo
-			err := decoder.Decode(&inventory)
-
-			if err != nil {
-				fmt.Println("Error while decoding file", path+"/"+child.Name(), "Reason:", err)
-			} else {
-				layout := "2006-01-02 15:04:05.999999999 -0700 MST"
-
-				if strings.Contains(inventory.LastSeen, "m=") {
-					inventory.LastSeen = strings.Split(inventory.LastSeen, " m=")[0]
-				}
-
-				date, parseErr := time.Parse(layout, inventory.LastSeen)
-
-				if parseErr != nil {
-					fmt.Println("Could not parse date")
-					fmt.Println(parseErr)
-				}
-
-				date = date.Add(time.Minute * time.Duration(config.Configuration.MaxAgeInMinutes))
-
-				if date.After(time.Now()) {
-					inventories = append(inventories, inventory)
-				}
-			}
+			inventory = append(inventory, server)
 		}
 	}
-	return inventories, nil
+	return inventory, nil
 }
