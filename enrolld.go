@@ -19,41 +19,19 @@ import (
 	"github.com/Olling/Enrolld/config"
 	"github.com/Olling/Enrolld/utils"
 	"github.com/Olling/Enrolld/output"
+	l "github.com/Olling/Enrolld/logging"
 )
 
 
 
-// type Configuration struct {
-// 	Path                   string
-// 	ScriptPath             string
-// 	NotificationScriptPath string
-// 	TempPath               string
-// 	LogPath                string
-// 	Port                   string
-// 	MaxAgeInDays           int
-// 	DefaultInventoryName   string
-
-// 	TargetsPort string
-// 	TlsPort     string
-// 	TlsCert     string
-// 	TlsKey      string
-// 	Blacklist   []string
-// 	Timeout     int
-// }
-
-var (
-	infolog               *log.Logger
-	errorlog              *log.Logger
-)
-
-func WriteToFile(server utils.ServerInfo, path string, append bool) (err error) {
-	utils.SyncOutputMutex.Lock()
-	defer utils.SyncOutputMutex.Unlock()
+func WriteToFile(server ServerInfo, path string, append bool) (err error) {
+	syncOutputMutex.Lock()
+	defer syncOutputMutex.Unlock()
 
 	server.NewServer = ""
 	bytes, marshalErr := json.MarshalIndent(server, "", "\t")
 	if marshalErr != nil {
-		errorlog.Println("Error while converting to json")
+		l.ErrorLog.Println("Error while converting to json")
 		return marshalErr
 	}
 	content := string(bytes)
@@ -70,8 +48,8 @@ func WriteToFile(server utils.ServerInfo, path string, append bool) (err error) 
 	} else {
 		err := ioutil.WriteFile(path, []byte(content), 0644)
 		if err != nil {
-			errorlog.Println("Error while writing file")
-			errorlog.Println(err)
+			l.ErrorLog.Println("Error while writing file")
+			l.ErrorLog.Println(err)
 			return err
 		}
 		return nil
@@ -80,13 +58,13 @@ func WriteToFile(server utils.ServerInfo, path string, append bool) (err error) 
 
 func checkScriptPath() (err error) {
 	if config.Configuration.ScriptPath == "" {
-		errorlog.Println("ScriptPath is empty: \"" + config.Configuration.ScriptPath + "\"")
+		l.ErrorLog.Println("ScriptPath is empty: \"" + config.Configuration.ScriptPath + "\"")
 		return fmt.Errorf("ScriptPath is empty")
 	} else {
 		_, existsErr := os.Stat(config.Configuration.ScriptPath)
 
 		if os.IsNotExist(existsErr) {
-			errorlog.Println("ScriptPath does not exist: \"" + config.Configuration.ScriptPath + "\"")
+			l.ErrorLog.Println("ScriptPath does not exist: \"" + config.Configuration.ScriptPath + "\"")
 			return fmt.Errorf("ScriptPath does not exist")
 		}
 	}
@@ -101,7 +79,7 @@ func callEnrolldScript(server utils.ServerInfo) (err error) {
 	}
 
 	if server.FQDN == "" {
-		errorlog.Println("FQDN is empty!")
+		l.ErrorLog.Println("FQDN is empty!")
 		return fmt.Errorf("FQDN was not given")
 	}
 
@@ -118,7 +96,7 @@ func callEnrolldScript(server utils.ServerInfo) (err error) {
 		if os.IsNotExist(existsErr) {
 			createErr := os.MkdirAll(tempDirectory, 0755)
 			if createErr != nil {
-				errorlog.Println(createErr)
+				l.ErrorLog.Println(createErr)
 				return fmt.Errorf("Could not create temp directory: " + tempDirectory)
 			}
 		}
@@ -133,7 +111,7 @@ func callEnrolldScript(server utils.ServerInfo) (err error) {
 
 		outfile, writeerr := os.Create(config.Configuration.LogPath + "/" + server.FQDN + ".log")
 		if writeerr != nil {
-			errorlog.Println("Error creating file", outfile.Name, writeerr)
+			l.ErrorLog.Println("Error creating file", outfile.Name, writeerr)
 		}
 
 		defer outfile.Close()
@@ -142,12 +120,12 @@ func callEnrolldScript(server utils.ServerInfo) (err error) {
 		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 		if startErr := cmd.Start(); err != nil {
-			errorlog.Println("Could not start the enrolld script", startErr)
+			l.ErrorLog.Println("Could not start the enrolld script", startErr)
 			return startErr
 		}
 
 		timer := time.AfterFunc(time.Duration(config.Configuration.Timeout)*time.Second, func() {
-			errorlog.Println("The server "+server.FQDN+" have reached the timeout - Killing process", cmd.Process.Pid)
+			l.ErrorLog.Println("The server "+server.FQDN+" have reached the timeout - Killing process", cmd.Process.Pid)
 			pgid, err := syscall.Getpgid(cmd.Process.Pid)
 			if err == nil {
 				syscall.Kill(-pgid, 15)
@@ -158,7 +136,7 @@ func callEnrolldScript(server utils.ServerInfo) (err error) {
 		timer.Stop()
 
 		if execErr != nil {
-			errorlog.Println("Error while excecuting script. Please see the log for more info: " + config.Configuration.LogPath + "/" + server.FQDN + ".log")
+			l.ErrorLog.Println("Error while excecuting script. Please see the log for more info: " + config.Configuration.LogPath + "/" + server.FQDN + ".log")
 			return execErr
 		}
 	}
@@ -214,7 +192,7 @@ func httpPost(w http.ResponseWriter, r *http.Request) {
 
 			if strings.TrimSpace(r.FormValue("AnsibleProperties")) != "" {
 				if m, _ := regexp.MatchString("^([: ,_'\"a-zA-Z0-9]*)$", r.FormValue("AnsibleProperties")); !m {
-					errorlog.Println("Received AnsibleProperties with illegal characters: \""+r.FormValue("AnsibleProperties")+"\" (", requestIP, ")")
+					l.ErrorLog.Println("Received AnsibleProperties with illegal characters: \""+r.FormValue("AnsibleProperties")+"\" (", requestIP, ")")
 				} else {
 					jsonproperties := "{" + r.FormValue("AnsibleProperties") + " }"
 					jsonproperties = strings.Replace(jsonproperties, "'", "\"", -1)
@@ -240,18 +218,18 @@ func httpPost(w http.ResponseWriter, r *http.Request) {
 				addr := addresses[0]
 				if addr != "" {
 					addr = strings.TrimSuffix(addr, ".")
-					infolog.Println("FQDN was empty (" + requestIP + ") but the IP had the following name: \"" + addr + "\"")
+					l.InfoLog.Println("FQDN was empty (" + requestIP + ") but the IP had the following name: \"" + addr + "\"")
 					server.FQDN = addr
 				}
 			} else {
-				errorlog.Println("FQDN is empty (", requestIP, ")")
+				l.ErrorLog.Println("FQDN is empty (", requestIP, ")")
 				http.Error(w, http.StatusText(500), 500)
 				return
 			}
 		}
 
 		if m, _ := regexp.MatchString("^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])$", server.FQDN); !m {
-			errorlog.Println("Received FQDN with illegal characters: \"", server.FQDN, "\" (", requestIP, ")")
+			l.ErrorLog.Println("Received FQDN with illegal characters: \"", server.FQDN, "\" (", requestIP, ")")
 			http.Error(w, http.StatusText(500), 500)
 			return
 		}
@@ -262,11 +240,11 @@ func httpPost(w http.ResponseWriter, r *http.Request) {
 				addr := addresses[0]
 				if addr != "" {
 					addr = strings.TrimSuffix(addr, ".")
-					infolog.Println("Server \"" + server.FQDN + "\"'s domain looks wrong - Replacing it with \"" + addr + "\"")
+					l.InfoLog.Println("Server \"" + server.FQDN + "\"'s domain looks wrong - Replacing it with \"" + addr + "\"")
 					server.FQDN = addr
 				}
 			} else {
-				errorlog.Println("Server \"" + server.FQDN + "\"'s domain looks wrong, but no suitable name was found to replace it")
+				l.ErrorLog.Println("Server \"" + server.FQDN + "\"'s domain looks wrong, but no suitable name was found to replace it")
 			}
 		}
 
@@ -275,7 +253,7 @@ func httpPost(w http.ResponseWriter, r *http.Request) {
 
 		for _, fqdn := range config.Configuration.Blacklist {
 			if strings.ToLower(server.FQDN) == strings.ToLower(fqdn) {
-				infolog.Println(server.FQDN + " (" + server.IP + ") is on the blacklist - Ignoring")
+				l.InfoLog.Println(server.FQDN + " (" + server.IP + ") is on the blacklist - Ignoring")
 				fmt.Fprintln(w, "Ignored")
 				return
 			}
@@ -290,7 +268,7 @@ func httpPost(w http.ResponseWriter, r *http.Request) {
 
 			enrolldErr := callEnrolldScript(server)
 			if enrolldErr != nil {
-				errorlog.Println("Error running script against " + server.FQDN + "(" + server.IP + ")" + ": " + enrolldErr.Error())
+				l.ErrorLog.Println("Error running script against " + server.FQDN + "(" + server.IP + ")" + ": " + enrolldErr.Error())
 
 				if val, ok := server.AnsibleProperties["global_server_type"]; !ok {
 					notification("Enrolld failure", "Failed to enroll the following new server: "+server.FQDN+"("+server.IP+")", server)
@@ -303,7 +281,7 @@ func httpPost(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, http.StatusText(500), 500)
 				return
 			} else {
-				infolog.Println("Enrolld script successful: " + server.FQDN)
+				l.InfoLog.Println("Enrolld script successful: " + server.FQDN)
 			}
 		}
 
@@ -311,30 +289,24 @@ func httpPost(w http.ResponseWriter, r *http.Request) {
 		writeerr = WriteToFile(server, config.Configuration.Path+"/"+server.FQDN, false)
 
 		if writeerr != nil {
-			errorlog.Println("Write Error")
+			l.ErrorLog.Println("Write Error")
 			http.Error(w, http.StatusText(500), 500)
 		} else {
 			fmt.Fprintln(w, "Enrolled")
 
 			if isNewServer {
-				infolog.Println("Enrolled the following new machine: " + server.FQDN + " (" + server.IP + ")")
+				l.InfoLog.Println("Enrolled the following new machine: " + server.FQDN + " (" + server.IP + ")")
 			} else {
-				infolog.Println("Updated the following machine: " + server.FQDN + " (" + server.IP + ")")
+				l.InfoLog.Println("Updated the following machine: " + server.FQDN + " (" + server.IP + ")")
 			}
 		}
 	}
 }
 
-func initializeLogging(infologHandle io.Writer, errorlogHandle io.Writer) {
-	infolog = log.New(infologHandle, "INFO: ", log.Lshortfile)
-	errorlog = log.New(errorlogHandle, "ERROR: ", log.Lshortfile)
-	infolog.Println("Logging Initialized")
-}
-
 func notification(subject string, message string, server utils.ServerInfo) {
 	binary, err := exec.LookPath(config.Configuration.NotificationScriptPath)
 	if err != nil {
-		errorlog.Println("Could not find the notification script in the given path", config.Configuration.NotificationScriptPath, err)
+		l.ErrorLog.Println("Could not find the notification script in the given path", config.Configuration.NotificationScriptPath, err)
 	}
 	cmd := exec.Command(binary)
 
@@ -352,37 +324,14 @@ func notification(subject string, message string, server utils.ServerInfo) {
 
 	startErr := cmd.Start()
 	if startErr != nil {
-		errorlog.Println("Could not send notification", startErr)
+		l.ErrorLog.Println("Could not send notification", startErr)
 	}
 
 	cmd.Wait()
 }
 
-// func initializeConfiguration(path string) {
-// 	file, _ := os.Open(path)
-// 	decoder := json.NewDecoder(file)
-// 	err := decoder.Decode(&configuration)
-
-// 	if err != nil {
-// 		errorlog.Println("Error while reading the configuration file - Exiting")
-// 		errorlog.Println(err)
-// 		os.Exit(1)
-// 	}
-
-// 	_, existsErr := os.Stat(configuration.Path)
-
-// 	if os.IsNotExist(existsErr) {
-// 		createErr := os.MkdirAll(configuration.Path, 0744)
-// 		if createErr != nil {
-// 			errorlog.Println(createErr)
-// 		} else {
-// 			infolog.Println("Created: " + configuration.Path)
-// 		}
-// 	}
-// }
-
 func main() {
-	initializeLogging(os.Stdout, os.Stderr)
+	l.InitializeLogging(os.Stdout, os.Stderr)
 	config.InitializeConfiguration("/etc/enrolld/enrolld.conf")
 
 	scriptPathErr := checkScriptPath()
