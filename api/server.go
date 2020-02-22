@@ -2,12 +2,7 @@ package api
 
 import (
 	"fmt"
-	"log"
 	"net/http"
-	"os"
-
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
 )
 
 func addServer(w http.ResponseWriter, r *http.Request) {
