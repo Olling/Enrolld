@@ -1,22 +1,22 @@
 package main
 
 import (
-    	"fmt"
-	"sort"
-    	"net/http"
-	"net"
-	"sync"
-	"io"
-	"io/ioutil"
-	"encoding/json"
-	"crypto/sha1"
 	"os"
+	"io"
+	"fmt"
 	"log"
-	"strings"
+	"net"
 	"time"
-	"os/exec"
+	"sort"
+	"sync"
 	"regexp"
 	"syscall"
+	"os/exec"
+	"strings"
+	"net/http"
+	"io/ioutil"
+	"crypto/sha1"
+	"encoding/json"
 )
 
 type ServerInfo struct {
@@ -34,10 +34,10 @@ type TargetList struct {
 }
 
 func (server ServerInfo) Exist () bool {
-   	_, existsErr := os.Stat(configuration.Path + "/" + server.FQDN)
+	_, existsErr := os.Stat(configuration.Path + "/" + server.FQDN)
 
         if os.IsNotExist(existsErr) {
-        	return false
+		return false
 	} else {
 		return true
 	}
@@ -63,9 +63,9 @@ type Configuration struct {
 var (
 	infolog *log.Logger
 	errorlog *log.Logger
- 	syncOutputMutex sync.Mutex
- 	syncGetInventoryMutex sync.Mutex
- 	configuration Configuration
+	syncOutputMutex sync.Mutex
+	syncGetInventoryMutex sync.Mutex
+	configuration Configuration
 )
 
 
@@ -89,16 +89,16 @@ func CategorizeInventories(inventories []ServerInfo) ([]string,map[string][]Serv
 
 
 func GetInventoryInJSON(inventories []ServerInfo) (string,error) {
-	inventoryjson := "{"	
+	inventoryjson := "{"
 
-	keys,inventoryMap := CategorizeInventories(inventories) 
+	keys,inventoryMap := CategorizeInventories(inventories)
 
         inventoryjson += "\n\t\"" + configuration.DefaultInventoryName + "\"\t: {\n\t\"hosts\"\t: ["
 	for _,inventory := range inventories {
 		inventoryjson += "\"" + inventory.FQDN + "\", "
 	}
- 	inventoryjson = strings.TrimSuffix(inventoryjson,", ")
-      	inventoryjson += "]\n\t},"
+	inventoryjson = strings.TrimSuffix(inventoryjson,", ")
+	inventoryjson += "]\n\t},"
 
 	for _,key := range keys {
 		inventoryjson += "\n\t\"" + key + "\"\t: {\n\t\"hosts\"\t: ["
@@ -106,7 +106,7 @@ func GetInventoryInJSON(inventories []ServerInfo) (string,error) {
 			inventoryjson += "\"" + inventory.FQDN + "\", "
 		}
 		inventoryjson = strings.TrimSuffix(inventoryjson,", ")
-        	inventoryjson += "]\n\t},"
+		inventoryjson += "]\n\t},"
 	}
 
 	inventoryjson += "\n\t\"_meta\" : {\n\t\t\"hostvars\" : {"
@@ -120,14 +120,14 @@ func GetInventoryInJSON(inventories []ServerInfo) (string,error) {
 				propertiesjson := string(propertiesjsonbytes)
 				propertiesjson = strings.TrimPrefix(propertiesjson, "{")
 				propertiesjson = strings.TrimSuffix(propertiesjson, "}")
-		        	inventoryjson += "\n\t\t\t\"" + server.FQDN + "\": {\n\t\t\t\t" + propertiesjson + "\n\t\t\t},"
+				inventoryjson += "\n\t\t\t\"" + server.FQDN + "\": {\n\t\t\t\t" + propertiesjson + "\n\t\t\t},"
 			}
 		}
 	}
 
         inventoryjson = strings.TrimSuffix(inventoryjson,",")
 	inventoryjson += "\n\t\t}\n\t}\n}"
-	
+
 	return inventoryjson,nil
 }
 
@@ -156,7 +156,7 @@ func GetTargetsInJSON(servers []ServerInfo) (string,error) {
 			label = "nolabels"
 		} else {
 			sha1calc := sha1.New()
-			
+
 			var keys []string
 			for key,_ := range entry.Labels {
 				keys = append(keys,key)
@@ -191,32 +191,32 @@ func GetTargetsInJSON(servers []ServerInfo) (string,error) {
 
 func GetInventory (path string) ([]ServerInfo, error) {
 	var inventories []ServerInfo
-       
+
 	filelist, filelisterr := ioutil.ReadDir(path)
         if filelisterr != nil {
                 errorlog.Println(filelisterr)
 		return nil, filelisterr
         }
 
- 	syncGetInventoryMutex.Lock()
-    	defer syncGetInventoryMutex.Unlock()
+	syncGetInventoryMutex.Lock()
+	defer syncGetInventoryMutex.Unlock()
 
         for _, child := range filelist {
 		if child.IsDir() == false {
-	   		file,fileerr := os.Open(path + "/" +child.Name())
-			
+			file,fileerr := os.Open(path + "/" +child.Name())
+
 			if fileerr != nil {
                                 errorlog.Println("Error while reading file",path + "/" + child.Name(),"Reason:",fileerr)
 				continue
 			}
 
-        		decoder := json.NewDecoder(file)
+			decoder := json.NewDecoder(file)
 			var inventory ServerInfo
-        		err := decoder.Decode(&inventory)
+			err := decoder.Decode(&inventory)
 
-        		if err != nil {
-                		errorlog.Println("Error while decoding file",path + "/" + child.Name(),"Reason:",err)
-        		} else {
+			if err != nil {
+				errorlog.Println("Error while decoding file",path + "/" + child.Name(),"Reason:",err)
+			} else {
 				layout := "2006-01-02 15:04:05.999999999 -0700 MST"
 
 				if strings.Contains(inventory.LastSeen,"m=") {
@@ -252,15 +252,15 @@ func FromJson(input string,output interface{}) (error) {
 
 
 func WriteToFile(server ServerInfo, path string, append bool) (err error){
-    	syncOutputMutex.Lock()
-    	defer syncOutputMutex.Unlock()
+	syncOutputMutex.Lock()
+	defer syncOutputMutex.Unlock()
 
-	server.NewServer = ""	
-    	bytes, marshalErr := json.MarshalIndent(server,"","\t")
-    	if marshalErr != nil {
+	server.NewServer = ""
+	bytes, marshalErr := json.MarshalIndent(server,"","\t")
+	if marshalErr != nil {
 		errorlog.Println("Error while converting to json")
-        	return marshalErr 
-    	}
+		return marshalErr
+	}
 	content := string(bytes)
 
 	if append {
@@ -274,13 +274,13 @@ func WriteToFile(server ServerInfo, path string, append bool) (err error){
 		return writeerr
 	} else {
 		err := ioutil.WriteFile(path, []byte(content), 0644)
-	    	if err != nil {
-                	errorlog.Println("Error while writing file")
+		if err != nil {
+			errorlog.Println("Error while writing file")
 			errorlog.Println(err)
 			return err
 		}
 		return nil
-    	}
+	}
 }
 
 func checkScriptPath () (err error){
@@ -306,7 +306,7 @@ func callEnrolldScript(server ServerInfo) (err error) {
 	        return scriptPathErr
 	}
 
-   	if server.FQDN == "" {
+	if server.FQDN == "" {
                 errorlog.Println("FQDN is empty!")
                 return fmt.Errorf("FQDN was not given")
         }
@@ -336,8 +336,8 @@ func callEnrolldScript(server ServerInfo) (err error) {
 
 		//TODO Fix This
 		cmd := exec.Command("sudo","-u","USER","/bin/bash", configuration.ScriptPath, tempDirectory + "/singledynamicinventory",server.FQDN)
-	
-          	outfile, writeerr := os.Create(configuration.LogPath + "/" + server.FQDN + ".log")
+
+		outfile, writeerr := os.Create(configuration.LogPath + "/" + server.FQDN + ".log")
                 if writeerr != nil {
                         errorlog.Println("Error creating file",outfile.Name,writeerr)
                 }
@@ -348,7 +348,7 @@ func callEnrolldScript(server ServerInfo) (err error) {
 		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 		if startErr := cmd.Start(); err != nil {
-    			errorlog.Println("Could not start the enrolld script",startErr)
+			errorlog.Println("Could not start the enrolld script",startErr)
                         return startErr
 		}
 
@@ -356,10 +356,10 @@ func callEnrolldScript(server ServerInfo) (err error) {
 			errorlog.Println("The server " + server.FQDN + " have reached the timeout - Killing process",cmd.Process.Pid)
 			pgid, err := syscall.Getpgid(cmd.Process.Pid)
 			if err == nil {
-    				syscall.Kill(-pgid, 15)
+				syscall.Kill(-pgid, 15)
 			}
 		})
-	
+
 		execErr := cmd.Wait()
 		timer.Stop()
 
@@ -377,11 +377,11 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
                 case "GET":
 			switch r.URL.Path {
 				case "/inventory":
-                                	httpGetInventory(w,r)
+					httpGetInventory(w,r)
 				case "/targets":
-                                	httpGetTargets(w,r)
+					httpGetTargets(w,r)
 				default:
-                                	fmt.Fprintf(w, "running")
+					fmt.Fprintf(w, "running")
 			}
                 case "POST":
                         httpPost(w,r)
@@ -389,8 +389,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 
-func httpGetInventory(w http.ResponseWriter, r *http.Request) {
-       	inventories, inventorieserr := GetInventory(configuration.Path)
+func httpGetInventory(w http.ResponseWriter, r *http.Request) {inventories, inventorieserr := GetInventory(configuration.Path)
 
         if inventorieserr != nil {
                 errorlog.Println(inventorieserr)
@@ -408,8 +407,7 @@ func httpGetInventory(w http.ResponseWriter, r *http.Request) {
 }
 
 
-func httpGetTargets(w http.ResponseWriter, r *http.Request) {
-       	servers, getErr := GetInventory(configuration.Path)
+func httpGetTargets(w http.ResponseWriter, r *http.Request) {servers, getErr := GetInventory(configuration.Path)
 
         if getErr != nil {
                 errorlog.Println(getErr)
@@ -435,7 +433,7 @@ func httpPost(w http.ResponseWriter, r *http.Request) {
 		if r.FormValue("FQDN") != "" {
 			server.FQDN = r.FormValue("FQDN")
 		}
-		
+
 		if r.Header.Get("FQDN") != "" {
                         server.FQDN = r.Header.Get("FQDN")
                 }
@@ -450,17 +448,17 @@ func httpPost(w http.ResponseWriter, r *http.Request) {
 
 			err := json.NewDecoder(r.Body).Decode(&server)
 			if err != nil {
-                              	http.Error(w, "The received JSON body was in the wrong format", 400)
+				http.Error(w, "The received JSON body was in the wrong format", 400)
 				return
 			}
 		default:
 			server.Inventories = strings.Split(r.FormValue("inventory"),",")
-			
+
 			if strings.TrimSpace(r.FormValue("AnsibleProperties")) != "" {
 				if m,_ := regexp.MatchString("^([: ,_'\"a-zA-Z0-9]*)$", r.FormValue("AnsibleProperties")); !m {
 					errorlog.Println("Received AnsibleProperties with illegal characters: \"" + r.FormValue("AnsibleProperties") + "\" (",requestIP,")")
 				} else {
-  					jsonproperties := "{" + r.FormValue("AnsibleProperties") + " }"
+					jsonproperties := "{" + r.FormValue("AnsibleProperties") + " }"
                                         jsonproperties = strings.Replace(jsonproperties,"'","\"",-1)
 
                                         var ansibleProperties map[string]string
@@ -480,7 +478,7 @@ func httpPost(w http.ResponseWriter, r *http.Request) {
 
 		if (server.FQDN == "") {
 			addresses, err := net.LookupAddr(requestIP)
-    			if err == nil && len(addresses) >= 1 {
+			if err == nil && len(addresses) >= 1 {
 				addr := addresses[0]
 				if addr != "" {
 					addr = strings.TrimSuffix(addr,".")
@@ -488,15 +486,15 @@ func httpPost(w http.ResponseWriter, r *http.Request) {
 					server.FQDN = addr
 				}
 			} else {
-      				errorlog.Println("FQDN is empty (",requestIP,")")
-                        	http.Error(w,http.StatusText(500),500)
+				errorlog.Println("FQDN is empty (",requestIP,")")
+			 	http.Error(w,http.StatusText(500),500)
 				return
 			}
 		}
 
-   		if m,_ := regexp.MatchString("^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])$", server.FQDN); !m {
+		if m,_ := regexp.MatchString("^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])$", server.FQDN); !m {
                         errorlog.Println("Received FQDN with illegal characters: \"", server.FQDN,"\" (",requestIP,")")
-                       	http.Error(w,http.StatusText(500),500)
+			http.Error(w,http.StatusText(500),500)
                         return
                 }
 
@@ -510,8 +508,8 @@ func httpPost(w http.ResponseWriter, r *http.Request) {
 					server.FQDN = addr
 				}
                         } else {
-                        	errorlog.Println("Server \"" + server.FQDN + "\"'s domain looks wrong, but no suitable name was found to replace it")
-                      	}
+				errorlog.Println("Server \"" + server.FQDN + "\"'s domain looks wrong, but no suitable name was found to replace it")
+			}
 		}
 
 
@@ -520,9 +518,9 @@ func httpPost(w http.ResponseWriter, r *http.Request) {
 
 		for _, fqdn := range configuration.Blacklist {
                         if strings.ToLower(server.FQDN) == strings.ToLower(fqdn) {
-			   	infolog.Println(server.FQDN + " (" + server.IP + ") is on the blacklist - Ignoring")
+				infolog.Println(server.FQDN + " (" + server.IP + ") is on the blacklist - Ignoring")
 	                        fmt.Fprintln(w, "Ignored")
-        	                return
+		                return
                         }
                 }
 
@@ -532,10 +530,10 @@ func httpPost(w http.ResponseWriter, r *http.Request) {
 
 		if (!server.Exist() || isNewServer) {
 			isNewServer = true
-			
-                        enrolldErr := callEnrolldScript(server)
+
+			enrolldErr := callEnrolldScript(server)
                         if enrolldErr != nil {
-                       		errorlog.Println("Error running script against " + server.FQDN + "(" + server.IP + ")" + ": " + enrolldErr.Error())
+				errorlog.Println("Error running script against " + server.FQDN + "(" + server.IP + ")" + ": " + enrolldErr.Error())
 
 				if val, ok := server.AnsibleProperties["global_server_type"]; !ok {
 					notification("Enrolld failure", "Failed to enroll the following new server: " + server.FQDN + "(" + server.IP + ")", server)
@@ -545,11 +543,11 @@ func httpPost(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 
-                        	http.Error(w,http.StatusText(500),500)
+				http.Error(w,http.StatusText(500),500)
 				return
                         } else {
-                        	infolog.Println("Enrolld script successful: " + server.FQDN)
-                 	}
+				infolog.Println("Enrolld script successful: " + server.FQDN)
+		 	}
 		}
 
                 var writeerr error
@@ -562,7 +560,7 @@ func httpPost(w http.ResponseWriter, r *http.Request) {
                         fmt.Fprintln(w, "Enrolled")
 
                         if isNewServer {
-             			infolog.Println("Enrolled the following new machine: " + server.FQDN + " (" + server.IP + ")")
+				infolog.Println("Enrolled the following new machine: " + server.FQDN + " (" + server.IP + ")")
 			} else {
                                 infolog.Println("Updated the following machine: " + server.FQDN + " (" + server.IP + ")")
 			}
@@ -634,7 +632,7 @@ func main() {
 	initializeLogging(os.Stdout, os.Stderr)
 	initializeConfiguration("/etc/enrolld/enrolld.conf")
 
-      	scriptPathErr := checkScriptPath()
+	scriptPathErr := checkScriptPath()
         if scriptPathErr != nil {
                 log.Fatal("ScriptPath Problem - stopping")
         }
@@ -647,5 +645,5 @@ func main() {
 	if tlserr != nil {
 		errorlog.Println("Error starting TLS: ",tlserr)
 	}
-	errorlog.Println("Error happend while serving port")	
+	errorlog.Println("Error happend while serving port")
 }
