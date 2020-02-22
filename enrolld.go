@@ -21,6 +21,7 @@ import (
 	"github.com/Olling/Enrolld/api"
 	"github.com/Olling/Enrolld/config"
 	l "github.com/Olling/Enrolld/logging"
+	"github.com/Olling/Enrolld/metrics"
 )
 
 type ServerInfo struct {
@@ -579,6 +580,7 @@ func main() {
 		log.Fatal("ScriptPath Problem - stopping")
 	}
 
+	metrics.Init()
 	api.SetupRouter()
 	// http.HandleFunc("/", httpHandler)
 
