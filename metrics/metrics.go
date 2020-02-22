@@ -8,17 +8,24 @@ import (
 
 // Metric definintions
 var (
-	ServerAddedCounter = promauto.NewCounter(prometheus.CounterOpts{
+	ServersAdded = promauto.NewCounter(prometheus.CounterOpts{
 		Subsystem: "enrolld",
-		Name:      "server_added_total",
+		Name:      "servers_added_total",
 		Help:      "The total number of added servers",
 	})
 
-	ServerUpdatedCounter = promauto.NewCounter(prometheus.CounterOpts{
+	ServersUpdated = promauto.NewCounter(prometheus.CounterOpts{
 		Subsystem: "enrolld",
-		Name:      "server_updated_total",
+		Name:      "servers_updated_total",
 		Help:      "The total number of updated servers",
 	})
+
+	ServersDeleted = promauto.NewCounter(prometheus.CounterOpts{
+		Subsystem: "enrolld",
+		Name:      "servers_deleted_total",
+		Help:      "The total number of deleted servers",
+	})
+
 	ServersInInventory = promauto.NewGaugeFunc(prometheus.GaugeOpts{
 		Subsystem: "enrolld",
 		Name:      "servers_in_inventory",

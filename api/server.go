@@ -3,17 +3,18 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"github.com/gorilla/mux"
+
 	"github.com/Olling/Enrolld/metrics"
 	"github.com/Olling/Enrolld/output"
 	"github.com/Olling/Enrolld/utils"
+	"github.com/gorilla/mux"
 )
 
 func addServer(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "ADD SERVER!")
 
 	// example counter
-	metrics.ServerAddedCounter.Inc()
+	metrics.ServersAdded.Inc()
 }
 
 func getServer(w http.ResponseWriter, r *http.Request) {
@@ -30,21 +31,25 @@ func getServer(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	server,err := output.GetServer(servername)
+	server, err := output.GetServer(servername)
 
-	if (err != nil) {
+	if err != nil {
 		http.Error(w, http.StatusText(404), 404)
 		return
 	}
 
-	serverjson,err := utils.StructToJson(server)
+	serverjson, err := utils.StructToJson(server)
 	fmt.Fprintln(w, serverjson)
 }
 
 func updateServer(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "UPDATE SERVER!")
+
+	metrics.ServersUpdated.Inc()
 }
 
 func deleteServer(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "DELETE SERVER!")
+
+	metrics.ServersDeleted.Inc()
 }
