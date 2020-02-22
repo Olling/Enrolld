@@ -1,0 +1,12 @@
+[Unit]
+Description=Systematic ITM Ansible Enrollment Server (enrolld)
+
+[Service]
+Type=simple
+User=enrolld
+ExecStart=/opt/enrolld/enrolld
+Restart=always
+LimitNOFILE=49152
+
+[Install]
+WantedBy=multi-user.target

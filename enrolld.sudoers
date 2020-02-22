@@ -1,0 +1,2 @@
+enrolld ALL=(USER) NOPASSWD: /bin/bash /opt/enrolld/enrolld_ansible.script *
+Defaults:enrolld !requiretty
