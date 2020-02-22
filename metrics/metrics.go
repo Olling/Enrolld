@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"github.com/Olling/Enrolld/output"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -18,4 +19,18 @@ var (
 		Name:      "server_updated_total",
 		Help:      "The total number of updated servers",
 	})
+	ServersInInventory = prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+		Subsystem: "enrolld",
+		Name:      "servers_in_inventory",
+		Help:      "Total amount of servers in inventory",
+	},
+		func() float64 {
+			return float64(
+				inventory, err := output.GetInventory()
+				if err != {
+					return
+				}
+				len(inventory)
+			)
+		})
 )
