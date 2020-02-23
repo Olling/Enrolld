@@ -1,14 +1,19 @@
-package io
+package fileio
 
 import (
-	"encoding/json"
 	"os"
 	"fmt"
 	"io/ioutil"
+	"encoding/json"
 	"github.com/Olling/Enrolld/utils"
-	l "github.com/Olling/Enrolld/logging"
 	"github.com/Olling/Enrolld/config"
+	l "github.com/Olling/Enrolld/logging"
 )
+
+
+func DeleteServer(serverName string) error {
+	return os.Remove(config.Configuration.Path + "/" + serverName)
+}
 
 func WriteToFile(server utils.ServerInfo, path string, append bool) (err error) {
 	utils.SyncOutputMutex.Lock()
