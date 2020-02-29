@@ -19,7 +19,6 @@ func WriteToFile(server utils.ServerInfo, path string, append bool) (err error) 
 	utils.SyncOutputMutex.Lock()
 	defer utils.SyncOutputMutex.Unlock()
 
-	server.NewServer = ""
 	bytes, marshalErr := json.MarshalIndent(server, "", "\t")
 	if marshalErr != nil {
 		l.ErrorLog.Println("Error while converting to json")

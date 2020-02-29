@@ -37,7 +37,7 @@ func GetInventoryInJSON(inventories []utils.ServerInfo) (string, error) {
 
 	inventoryjson += "\n\t\"" + config.Configuration.DefaultInventoryName + "\"\t: {\n\t\"hosts\"\t: ["
 	for _, inventory := range inventories {
-		inventoryjson += "\"" + inventory.FQDN + "\", "
+		inventoryjson += "\"" + inventory.ServerID + "\", "
 	}
 	inventoryjson = strings.TrimSuffix(inventoryjson, ", ")
 	inventoryjson += "]\n\t},"
@@ -45,7 +45,7 @@ func GetInventoryInJSON(inventories []utils.ServerInfo) (string, error) {
 	for _, key := range keys {
 		inventoryjson += "\n\t\"" + key + "\"\t: {\n\t\"hosts\"\t: ["
 		for _, inventory := range inventoryMap[key] {
-			inventoryjson += "\"" + inventory.FQDN + "\", "
+			inventoryjson += "\"" + inventory.ServerID + "\", "
 		}
 		inventoryjson = strings.TrimSuffix(inventoryjson, ", ")
 		inventoryjson += "]\n\t},"
@@ -62,7 +62,7 @@ func GetInventoryInJSON(inventories []utils.ServerInfo) (string, error) {
 				propertiesjson := string(propertiesjsonbytes)
 				propertiesjson = strings.TrimPrefix(propertiesjson, "{")
 				propertiesjson = strings.TrimSuffix(propertiesjson, "}")
-				inventoryjson += "\n\t\t\t\"" + server.FQDN + "\": {\n\t\t\t\t" + propertiesjson + "\n\t\t\t},"
+				inventoryjson += "\n\t\t\t\"" + server.ServerID + "\": {\n\t\t\t\t" + propertiesjson + "\n\t\t\t},"
 			}
 		}
 	}

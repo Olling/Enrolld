@@ -11,49 +11,49 @@ import (
 	"errors"
 	"strings"
 	"syscall"
+	"github.com/Olling/slog"
 	"github.com/Olling/Enrolld/utils"
 	"github.com/Olling/Enrolld/output"
 	"github.com/Olling/Enrolld/fileio"
 	"github.com/Olling/Enrolld/config"
-	l "github.com/Olling/Enrolld/logging"
 )
 
 func VerifyFQDN(server utils.ServerInfo, requestIP string) (string, error) {
 	var fqdn string
 
-	if server.FQDN == "" {
+	if server.ServerID == "" {
 		addresses, err := net.LookupAddr(requestIP)
 		if err == nil && len(addresses) >= 1 {
 			addr := addresses[0]
 			if addr != "" {
 				addr = strings.TrimSuffix(addr, ".")
-				l.InfoLog.Println("FQDN was empty (" + requestIP + ") but the IP had the following name: \"" + addr + "\"")
-				server.FQDN = addr
+				slog.PrintInfo("FQDN was empty (" + requestIP + ") but the IP had the following name: \"" + addr + "\"")
+				server.ServerID = addr
 			}
 		} else {
 			return "", errors.New("FQDN is empty")
 		}
 	}
 
-	if m, _ := regexp.MatchString("^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])$", server.FQDN); !m {
-		l.ErrorLog.Println("Received FQDN with illegal characters: \"", fqdn, "\" (", requestIP, ")")
+	if m, _ := regexp.MatchString("^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])$", server.ServerID); !m {
+		slog.PrintError("Received FQDN with illegal characters: \"", fqdn, "\" (", requestIP, ")")
 		return "", errors.New("Received FQDN with illegal characters: \"" + fqdn + "\" (" + requestIP + ")")
 	}
 
-	if len(strings.Split(server.FQDN, ".")) < 3 {
+	if len(strings.Split(server.ServerID, ".")) < 3 {
 		addresses, err := net.LookupAddr(requestIP)
 		if err == nil && len(addresses) >= 1 {
 			addr := addresses[0]
 			if addr != "" {
 				addr = strings.TrimSuffix(addr, ".")
-				l.InfoLog.Println("Server \"" + server.FQDN + "\"'s domain looks wrong - Replacing it with \"" + addr + "\"")
-				server.FQDN = addr
+				slog.PrintInfo("Server \"" + server.ServerID + "\"'s domain looks wrong - Replacing it with \"" + addr + "\"")
+				server.ServerID = addr
 			}
 		} else {
-			l.ErrorLog.Println("Server \"" + server.FQDN + "\"'s domain looks wrong, but no suitable name was found to replace it")
+			slog.PrintError("Server \"" + server.ServerID + "\"'s domain looks wrong, but no suitable name was found to replace it")
 		}
 	}
-	return server.FQDN, nil
+	return server.ServerID, nil
 }
 
 //func GetContent () {
@@ -64,7 +64,7 @@ func VerifyFQDN(server utils.ServerInfo, requestIP string) (string, error) {
 //
 //		if strings.TrimSpace(r.FormValue("AnsibleProperties")) != "" {
 //			if m, _ := regexp.MatchString("^([: ,_'\"a-zA-Z0-9]*)$", r.FormValue("AnsibleProperties")); !m {
-//				l.ErrorLog.Println("Received AnsibleProperties with illegal characters: \""+r.FormValue("AnsibleProperties")+"\" (", requestIP, ")")
+//				slog.PrintError("Received AnsibleProperties with illegal characters: \""+r.FormValue("AnsibleProperties")+"\" (", requestIP, ")")
 //			} else {
 //				jsonproperties := "{" + r.FormValue("AnsibleProperties") + " }"
 //				jsonproperties = strings.Replace(jsonproperties, "'", "\"", -1)
@@ -93,32 +93,32 @@ func UpdateServer(server utils.ServerInfo, isNewServer bool) error {
 
 		enrolldErr := callEnrolldScript(server)
 		if enrolldErr != nil {
-			l.ErrorLog.Println("Error running script against " + server.FQDN + "(" + server.IP + ")" + ": " + enrolldErr.Error())
+			slog.PrintError("Error running script against " + server.ServerID + "(" + server.IP + ")" + ": " + enrolldErr.Error())
 
 			if val, ok := server.AnsibleProperties["global_server_type"]; !ok {
-				notification("Enrolld failure", "Failed to enroll the following new server: " + server.FQDN + "(" + server.IP + ")", server)
+				notification("Enrolld failure", "Failed to enroll the following new server: " + server.ServerID + "(" + server.IP + ")", server)
 			} else {
 				if val != "clud" {
-					notification("Enrolld failure", "Failed to enroll the following new server: " + server.FQDN + "(" + server.IP + ")", server)
+					notification("Enrolld failure", "Failed to enroll the following new server: " + server.ServerID + "(" + server.IP + ")", server)
 				}
 			}
 
 			return enrolldErr
 		} else {
-			l.InfoLog.Println("Enrolld script successful: " + server.FQDN)
+			slog.PrintInfo("Enrolld script successful: " + server.ServerID)
 		}
 	}
 
 	var writeerr error
-	writeerr = fileio.WriteToFile(server, config.Configuration.Path + "/" + server.FQDN, false)
+	writeerr = fileio.WriteToFile(server, config.Configuration.Path + "/" + server.ServerID, false)
 
 	if writeerr != nil {
 		return writeerr
 	} else {
 		if isNewServer {
-			l.InfoLog.Println("Enrolled the following new machine: " + server.FQDN + " (" + server.IP + ")")
+			slog.PrintInfo("Enrolled the following new machine: " + server.ServerID + " (" + server.IP + ")")
 		} else {
-			l.InfoLog.Println("Updated the following machine: " + server.FQDN + " (" + server.IP + ")")
+			slog.PrintInfo("Updated the following machine: " + server.ServerID + " (" + server.IP + ")")
 		}
 	}
 	return nil
@@ -128,7 +128,7 @@ func UpdateServer(server utils.ServerInfo, isNewServer bool) error {
 func notification(subject string, message string, server utils.ServerInfo) {
 	binary, err := exec.LookPath(config.Configuration.NotificationScriptPath)
 	if err != nil {
-		l.ErrorLog.Println("Could not find the notification script in the given path", config.Configuration.NotificationScriptPath, err)
+		slog.PrintError("Could not find the notification script in the given path", config.Configuration.NotificationScriptPath, err)
 	}
 	cmd := exec.Command(binary)
 
@@ -136,7 +136,7 @@ func notification(subject string, message string, server utils.ServerInfo) {
 	env = append(env, fmt.Sprintf("SUBJECT=%s", subject))
 	env = append(env, fmt.Sprintf("MESSAGE=%s", message))
 
-	env = append(env, fmt.Sprintf("SERVER_FQDN=%s", server.FQDN))
+	env = append(env, fmt.Sprintf("SERVER_FQDN=%s", server.ServerID))
 	env = append(env, fmt.Sprintf("SERVER_IP=%s", server.IP))
 	env = append(env, fmt.Sprintf("SERVER_PROPERTIES=%s", server.AnsibleProperties))
 	env = append(env, fmt.Sprintf("SERVER_INVENTORIES=%s", server.Inventories))
@@ -146,7 +146,7 @@ func notification(subject string, message string, server utils.ServerInfo) {
 
 	startErr := cmd.Start()
 	if startErr != nil {
-		l.ErrorLog.Println("Could not send notification", startErr)
+		slog.PrintError("Could not send notification", startErr)
 	}
 
 	cmd.Wait()
@@ -160,8 +160,8 @@ func callEnrolldScript(server utils.ServerInfo) (err error) {
 		return scriptPathErr
 	}
 
-	if server.FQDN == "" {
-		l.ErrorLog.Println("FQDN is empty!")
+	if server.ServerID == "" {
+		slog.PrintError("FQDN is empty!")
 		return fmt.Errorf("FQDN was not given")
 	}
 
@@ -173,12 +173,12 @@ func callEnrolldScript(server utils.ServerInfo) (err error) {
 	}
 
 	if !patchonly {
-		tempDirectory := config.Configuration.TempPath + "/" + server.FQDN
+		tempDirectory := config.Configuration.TempPath + "/" + server.ServerID
 		_, existsErr := os.Stat(tempDirectory)
 		if os.IsNotExist(existsErr) {
 			createErr := os.MkdirAll(tempDirectory, 0755)
 			if createErr != nil {
-				l.ErrorLog.Println(createErr)
+				slog.PrintError(createErr)
 				return fmt.Errorf("Could not create temp directory: " + tempDirectory)
 			}
 		}
@@ -189,11 +189,11 @@ func callEnrolldScript(server utils.ServerInfo) (err error) {
 		ioutil.WriteFile(tempDirectory+"/singledynamicinventory", []byte("#!/bin/bash\necho \""+json+"\""), 0755)
 
 		//TODO Fix This
-		cmd := exec.Command("sudo", "-u", "USER", "/bin/bash", config.Configuration.ScriptPath, tempDirectory+"/singledynamicinventory", server.FQDN)
+		cmd := exec.Command("sudo", "-u", "USER", "/bin/bash", config.Configuration.ScriptPath, tempDirectory+"/singledynamicinventory", server.ServerID)
 
-		outfile, writeerr := os.Create(config.Configuration.LogPath + "/" + server.FQDN + ".log")
+		outfile, writeerr := os.Create(config.Configuration.LogPath + "/" + server.ServerID + ".log")
 		if writeerr != nil {
-			l.ErrorLog.Println("Error creating file", outfile.Name, writeerr)
+			slog.PrintError("Error creating file", outfile.Name, writeerr)
 		}
 
 		defer outfile.Close()
@@ -202,12 +202,12 @@ func callEnrolldScript(server utils.ServerInfo) (err error) {
 		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 		if startErr := cmd.Start(); err != nil {
-			l.ErrorLog.Println("Could not start the enrolld script", startErr)
+			slog.PrintError("Could not start the enrolld script", startErr)
 			return startErr
 		}
 
 		timer := time.AfterFunc(time.Duration(config.Configuration.Timeout)*time.Second, func() {
-			l.ErrorLog.Println("The server "+server.FQDN+" have reached the timeout - Killing process", cmd.Process.Pid)
+			slog.PrintError("The server "+server.ServerID+" have reached the timeout - Killing process", cmd.Process.Pid)
 			pgid, err := syscall.Getpgid(cmd.Process.Pid)
 			if err == nil {
 				syscall.Kill(-pgid, 15)
@@ -218,7 +218,7 @@ func callEnrolldScript(server utils.ServerInfo) (err error) {
 		timer.Stop()
 
 		if execErr != nil {
-			l.ErrorLog.Println("Error while excecuting script. Please see the log for more info: " + config.Configuration.LogPath + "/" + server.FQDN + ".log")
+			slog.PrintError("Error while excecuting script. Please see the log for more info: " + config.Configuration.LogPath + "/" + server.ServerID + ".log")
 			return execErr
 		}
 	}

@@ -5,22 +5,26 @@ import (
 	"net"
 	"strings"
 	"net/http"
-	"encoding/json"
+	"io/ioutil"
 	"github.com/gorilla/mux"
+	"github.com/Olling/slog"
 	"github.com/Olling/Enrolld/utils"
 	"github.com/Olling/Enrolld/fileio"
 	"github.com/Olling/Enrolld/output"
 	"github.com/Olling/Enrolld/config"
 	"github.com/Olling/Enrolld/metrics"
-	l "github.com/Olling/Enrolld/logging"
 	input "github.com/Olling/Enrolld/input"
 )
 
-func addServer(w http.ResponseWriter, r *http.Request) {
-	metrics.ServersAdded.Inc()
-}
 
 func updateServer(w http.ResponseWriter, r *http.Request) {
+	requestIP, _, err := net.SplitHostPort(r.RemoteAddr)
+
+	if err != nil {
+		http.Error(w, http.StatusText(500), 500)
+		return
+	}
+
 	contentType := r.Header.Get("Content-type")
 	var servername string
 
@@ -37,37 +41,38 @@ func updateServer(w http.ResponseWriter, r *http.Request) {
 	switch contentType {
 	case "application/json":
 		if r.Body == nil {
+			slog.PrintError("Empty POST received from:" , requestIP)
 			http.Error(w, "Please send a request body in JSON format", 400)
 			return
 		}
 
-		err := json.NewDecoder(r.Body).Decode(&server)
+		json, err := ioutil.ReadAll(r.Body)
 		if err != nil {
+			slog.PrintError("Could not read body from:" , requestIP)
+			http.Error(w, "Please send a request body in JSON format", 400)
+			return
+		}
+		err = utils.StructFromJson(json, &server)
+		if err != nil {
+			slog.PrintError("Could not decode JSON from:" , requestIP, err)
 			http.Error(w, "The received JSON body was in the wrong format", 400)
 			return
 		}
 	}
 
-	requestIP, _, err := net.SplitHostPort(r.RemoteAddr)
 	servername, err = input.VerifyFQDN(server, requestIP)
-
-	if err != nil {
-		http.Error(w, http.StatusText(500), 500)
-		return
-	}
-
-	server.FQDN = servername
+	server.ServerID = servername
 
 	for _, fqdn := range config.Configuration.Blacklist {
-		if strings.ToLower(server.FQDN) == strings.ToLower(fqdn) {
-			l.InfoLog.Println(server.FQDN + " (" + server.IP + ") is on the blacklist - Ignoring")
+		if strings.ToLower(server.ServerID) == strings.ToLower(fqdn) {
+			slog.PrintDebug(server.ServerID + " (" + server.IP + ") is on the blacklist - Ignoring")
 			fmt.Fprintln(w, "Ignored")
 			return
 		}
 	}
 
 	isNewServer := false
-	if strings.ToLower(r.FormValue("NewServer")) == "true" || strings.ToLower(r.FormValue("NewServer")) == "yes" || strings.ToLower(server.NewServer) == "true" || strings.ToLower(server.NewServer) == "yes" {
+	if strings.ToLower(r.FormValue("NewServer")) == "true" || strings.ToLower(r.FormValue("NewServer")) == "yes" || server.NewServer {
 		isNewServer = true
 	}
 

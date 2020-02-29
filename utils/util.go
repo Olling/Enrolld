@@ -13,7 +13,7 @@ var (
 )
 
 func (server ServerInfo) Exist() bool {
-	_, existsErr := os.Stat(config.Configuration.Path + "/" + server.FQDN)
+	_, existsErr := os.Stat(config.Configuration.Path + "/" + server.ServerID)
 
 	if os.IsNotExist(existsErr) {
 		return false
@@ -23,10 +23,10 @@ func (server ServerInfo) Exist() bool {
 }
 
 type ServerInfo struct {
-	FQDN              string
+	ServerID          string
 	IP                string
 	LastSeen          string
-	NewServer         string `json:"NewServer,omitempty"`
+	NewServer         bool `json:"NewServer,omitempty"`
 	Inventories       []string
 	AnsibleProperties map[string]string
 }
@@ -36,6 +36,6 @@ func StructToJson(s interface{}) (string, error) {
 	return string(bytes), marshalErr
 }
 
-func StructFromJson(input string, output interface{}) error {
-	return json.Unmarshal([]byte(input), &output)
+func StructFromJson(input []byte, output interface{}) error {
+	return json.Unmarshal(input, &output)
 }

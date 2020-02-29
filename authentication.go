@@ -5,28 +5,10 @@ import (
 	"io/ioutil"
 	"crypto/tls"
 	"crypto/x509"
-	"github.com/olling/slog"
+	"github.com/Olling/slog"
 	"golang.org/x/crypto/bcrypt"
 )
 
-
-//var (
-//	configuration *Configuration
-//	configurationFile string
-//)
-//
-//
-//type Configuration struct {
-//	Address string
-//	LogLevel int
-//	ProxyTargets []ProxyTarget
-//	TlsEnabled bool
-//	TlsAddress string
-//	TlsKey string
-//	TlsCert string
-//	ClientCert_Enabled bool
-//	ClientCert_CA string
-//}
 
 type Credential struct {
 	Encrypted bool
