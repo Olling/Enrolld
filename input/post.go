@@ -18,70 +18,43 @@ import (
 	"github.com/Olling/Enrolld/config"
 )
 
-func VerifyFQDN(server utils.ServerInfo, requestIP string) (string, error) {
+func VerifyFQDN(serverid string, requestIP string) (string, error) {
 	var fqdn string
 
-	if server.ServerID == "" {
+	if serverid == "" {
 		addresses, err := net.LookupAddr(requestIP)
 		if err == nil && len(addresses) >= 1 {
 			addr := addresses[0]
 			if addr != "" {
 				addr = strings.TrimSuffix(addr, ".")
 				slog.PrintInfo("FQDN was empty (" + requestIP + ") but the IP had the following name: \"" + addr + "\"")
-				server.ServerID = addr
+				serverid = addr
 			}
 		} else {
 			return "", errors.New("FQDN is empty")
 		}
 	}
 
-	if m, _ := regexp.MatchString("^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])$", server.ServerID); !m {
+	if m, _ := regexp.MatchString("^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])$", serverid); !m {
 		slog.PrintError("Received FQDN with illegal characters: \"", fqdn, "\" (", requestIP, ")")
 		return "", errors.New("Received FQDN with illegal characters: \"" + fqdn + "\" (" + requestIP + ")")
 	}
 
-	if len(strings.Split(server.ServerID, ".")) < 3 {
+	if len(strings.Split(serverid, ".")) < 3 {
 		addresses, err := net.LookupAddr(requestIP)
 		if err == nil && len(addresses) >= 1 {
 			addr := addresses[0]
 			if addr != "" {
 				addr = strings.TrimSuffix(addr, ".")
-				slog.PrintInfo("Server \"" + server.ServerID + "\"'s domain looks wrong - Replacing it with \"" + addr + "\"")
-				server.ServerID = addr
+				slog.PrintInfo("Server \"" + serverid + "\"'s domain looks wrong - Replacing it with \"" + addr + "\"")
+				serverid = addr
 			}
 		} else {
-			slog.PrintError("Server \"" + server.ServerID + "\"'s domain looks wrong, but no suitable name was found to replace it")
+			slog.PrintError("Server \"" + serverid + "\"'s domain looks wrong, but no suitable name was found to replace it")
 		}
 	}
-	return server.ServerID, nil
+	return serverid, nil
 }
-
-//func GetContent () {
-//
-//
-//	default:
-//		server.Inventories = strings.Split(r.FormValue("inventory"), ",")
-//
-//		if strings.TrimSpace(r.FormValue("AnsibleProperties")) != "" {
-//			if m, _ := regexp.MatchString("^([: ,_'\"a-zA-Z0-9]*)$", r.FormValue("AnsibleProperties")); !m {
-//				slog.PrintError("Received AnsibleProperties with illegal characters: \""+r.FormValue("AnsibleProperties")+"\" (", requestIP, ")")
-//			} else {
-//				jsonproperties := "{" + r.FormValue("AnsibleProperties") + " }"
-//				jsonproperties = strings.Replace(jsonproperties, "'", "\"", -1)
-//
-//				var ansibleProperties map[string]string
-//
-//				err := json.NewDecoder(strings.NewReader(jsonproperties)).Decode(&ansibleProperties)
-//				if err != nil {
-//					http.Error(w, "The AnsibleProperties was in the wrong format", 400)
-//					return
-//				}
-//
-//				server.AnsibleProperties = ansibleProperties
-//			}
-//		}
-//	}
-//}
 
 
 
@@ -91,19 +64,12 @@ func UpdateServer(server utils.ServerInfo, isNewServer bool) error {
 	if !server.Exist() || isNewServer {
 		isNewServer = true
 
-		enrolldErr := callEnrolldScript(server)
-		if enrolldErr != nil {
-			slog.PrintError("Error running script against " + server.ServerID + "(" + server.IP + ")" + ": " + enrolldErr.Error())
+		err := callEnrolldScript(server)
+		if err != nil {
+			slog.PrintError("Error running script against " + server.ServerID + "(" + server.IP + ")" + ": " + err.Error())
+			notification("Enrolld failure", "Failed to enroll the following new server: " + server.ServerID + "(" + server.IP + ")", server)
 
-			if val, ok := server.AnsibleProperties["global_server_type"]; !ok {
-				notification("Enrolld failure", "Failed to enroll the following new server: " + server.ServerID + "(" + server.IP + ")", server)
-			} else {
-				if val != "clud" {
-					notification("Enrolld failure", "Failed to enroll the following new server: " + server.ServerID + "(" + server.IP + ")", server)
-				}
-			}
-
-			return enrolldErr
+			return err
 		} else {
 			slog.PrintInfo("Enrolld script successful: " + server.ServerID)
 		}
@@ -116,9 +82,9 @@ func UpdateServer(server utils.ServerInfo, isNewServer bool) error {
 		return writeerr
 	} else {
 		if isNewServer {
-			slog.PrintInfo("Enrolled the following new machine: " + server.ServerID + " (" + server.IP + ")")
+			slog.PrintInfo("Enrolled the following new machine:", server.ServerID, "(" + server.IP + ")")
 		} else {
-			slog.PrintInfo("Updated the following machine: " + server.ServerID + " (" + server.IP + ")")
+			slog.PrintInfo("Updated the following machine:", server.ServerID, "(" + server.IP + ")")
 		}
 	}
 	return nil
@@ -136,7 +102,7 @@ func notification(subject string, message string, server utils.ServerInfo) {
 	env = append(env, fmt.Sprintf("SUBJECT=%s", subject))
 	env = append(env, fmt.Sprintf("MESSAGE=%s", message))
 
-	env = append(env, fmt.Sprintf("SERVER_FQDN=%s", server.ServerID))
+	env = append(env, fmt.Sprintf("SERVER_ID=%s", server.ServerID))
 	env = append(env, fmt.Sprintf("SERVER_IP=%s", server.IP))
 	env = append(env, fmt.Sprintf("SERVER_PROPERTIES=%s", server.AnsibleProperties))
 	env = append(env, fmt.Sprintf("SERVER_INVENTORIES=%s", server.Inventories))
@@ -161,8 +127,8 @@ func callEnrolldScript(server utils.ServerInfo) (err error) {
 	}
 
 	if server.ServerID == "" {
-		slog.PrintError("FQDN is empty!")
-		return fmt.Errorf("FQDN was not given")
+		slog.PrintError("Failed to call Enrollment Script - ServerID is empty!")
+		return fmt.Errorf("ServerID was not given")
 	}
 
 	patchonly := false
@@ -188,8 +154,7 @@ func callEnrolldScript(server utils.ServerInfo) (err error) {
 
 		ioutil.WriteFile(tempDirectory+"/singledynamicinventory", []byte("#!/bin/bash\necho \""+json+"\""), 0755)
 
-		//TODO Fix This
-		cmd := exec.Command("sudo", "-u", "USER", "/bin/bash", config.Configuration.ScriptPath, tempDirectory+"/singledynamicinventory", server.ServerID)
+		cmd := exec.Command("/bin/bash", config.Configuration.ScriptPath, tempDirectory+"/singledynamicinventory", server.ServerID)
 
 		outfile, writeerr := os.Create(config.Configuration.LogPath + "/" + server.ServerID + ".log")
 		if writeerr != nil {
@@ -206,8 +171,8 @@ func callEnrolldScript(server utils.ServerInfo) (err error) {
 			return startErr
 		}
 
-		timer := time.AfterFunc(time.Duration(config.Configuration.Timeout)*time.Second, func() {
-			slog.PrintError("The server "+server.ServerID+" have reached the timeout - Killing process", cmd.Process.Pid)
+		timer := time.AfterFunc(time.Duration(config.Configuration.Timeout) * time.Second, func() {
+			slog.PrintError("The server " + server.ServerID + " have reached the timeout - Killing process", cmd.Process.Pid)
 			pgid, err := syscall.Getpgid(cmd.Process.Pid)
 			if err == nil {
 				syscall.Kill(-pgid, 15)

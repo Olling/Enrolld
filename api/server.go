@@ -60,7 +60,7 @@ func updateServer(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	servername, err = input.VerifyFQDN(server, requestIP)
+	servername, err = input.VerifyFQDN(server.ServerID, requestIP)
 	server.ServerID = servername
 
 	for _, fqdn := range config.Configuration.Blacklist {
