@@ -39,3 +39,23 @@ func StructToJson(s interface{}) (string, error) {
 func StructFromJson(input []byte, output interface{}) error {
 	return json.Unmarshal(input, &output)
 }
+
+func StringExistsInArray(array []string, required string) bool {
+    for _, item := range array {
+        if item == required {
+            return true
+        }
+    }
+    return false
+}
+
+
+func KeyValueExistsInMap(chart map[string]string, requiredKey string, requiredValue string) bool {
+	if value, ok := chart[requiredKey]; ok {
+		if requiredValue == value {
+			return true
+		}
+	}
+	return false
+}
+

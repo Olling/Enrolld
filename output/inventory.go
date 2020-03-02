@@ -160,7 +160,7 @@ func GetFilteredInventory(ansibleInventories []string, ansibleProperties map[str
 	for _, server := range inventory {
 		if len(ansibleInventories) != 0 {
 			for _,ansibleInventory := range ansibleInventories {
-				if !StringExistsInArray(server.Inventories, ansibleInventory) {
+				if !utils.StringExistsInArray(server.Inventories, ansibleInventory) {
 					continue
 				}
 			}
@@ -168,7 +168,7 @@ func GetFilteredInventory(ansibleInventories []string, ansibleProperties map[str
 		}
 		if len(ansibleProperties) != 0 {
 			for key, value := range ansibleProperties {
-				if !KeyValueExistsInMap(server.AnsibleProperties, key, value) {
+				if !utils.KeyValueExistsInMap(server.AnsibleProperties, key, value) {
 					continue
 				}
 			}
@@ -180,23 +180,4 @@ func GetFilteredInventory(ansibleInventories []string, ansibleProperties map[str
 	return filteredInventory, nil
 }
 
-
-func StringExistsInArray(array []string, required string) bool {
-    for _, item := range array {
-        if item == required {
-            return true
-        }
-    }
-    return false
-}
-
-
-func KeyValueExistsInMap(chart map[string]string, requiredKey string, requiredValue string) bool {
-	if value, ok := chart[requiredKey]; ok {
-		if requiredValue == value {
-			return true
-		}
-	}
-	return false
-}
 
