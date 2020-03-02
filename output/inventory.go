@@ -30,6 +30,7 @@ func CategorizeInventories(inventories []utils.ServerInfo) ([]string, map[string
 	return keys, results
 }
 
+
 func GetInventoryInJSON(inventories []utils.ServerInfo) (string, error) {
 	inventoryjson := "{"
 
@@ -74,8 +75,8 @@ func GetInventoryInJSON(inventories []utils.ServerInfo) (string, error) {
 }
 
 
-func GetServer(serverName string) (server utils.ServerInfo, err error) {
-	file, err := os.Open(config.Configuration.Path + "/" + serverName)
+func GetServer(serverID string) (server utils.ServerInfo, err error) {
+	file, err := os.Open(config.Configuration.Path + "/" + serverID)
 	defer file.Close()
 	if err != nil {
 		return server,err
@@ -83,8 +84,8 @@ func GetServer(serverName string) (server utils.ServerInfo, err error) {
 
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(&server)
-
 	file.Close()
+
 	if err != nil {
 		return server, err
 	} else {
@@ -120,6 +121,7 @@ func GetInventoryCount() float64 {
 	return float64(len(filelist))
 }
 
+
 func GetInventory() ([]utils.ServerInfo, error) {
 	var inventory []utils.ServerInfo
 
@@ -134,7 +136,7 @@ func GetInventory() ([]utils.ServerInfo, error) {
 
 	for _, child := range filelist {
 		if child.IsDir() == false {
-			server,err := GetServer(child.Name())
+			server, err := GetServer(child.Name())
 
 			if err != nil && err.Error() != "Server was beyond max age" {
 				slog.PrintError("Error while reading file", config.Configuration.Path + "/" + child.Name(), "Reason:", err)
@@ -146,3 +148,55 @@ func GetInventory() ([]utils.ServerInfo, error) {
 	}
 	return inventory, nil
 }
+
+func GetFilteredInventory(ansibleInventories []string, ansibleProperties map[string]string) ([]utils.ServerInfo, error) {
+	inventory, err := GetInventory()
+	var filteredInventory []utils.ServerInfo
+
+	if err != nil {
+		return inventory, err
+	}
+
+	for _, server := range inventory {
+		if len(ansibleInventories) != 0 {
+			for _,ansibleInventory := range ansibleInventories {
+				if !StringExistsInArray(server.Inventories, ansibleInventory) {
+					continue
+				}
+			}
+
+		}
+		if len(ansibleProperties) != 0 {
+			for key, value := range ansibleProperties {
+				if !KeyValueExistsInMap(server.AnsibleProperties, key, value) {
+					continue
+				}
+			}
+		}
+
+		filteredInventory = append(filteredInventory, server)
+	}
+
+	return filteredInventory, nil
+}
+
+
+func StringExistsInArray(array []string, required string) bool {
+    for _, item := range array {
+        if item == required {
+            return true
+        }
+    }
+    return false
+}
+
+
+func KeyValueExistsInMap(chart map[string]string, requiredKey string, requiredValue string) bool {
+	if value, ok := chart[requiredKey]; ok {
+		if requiredValue == value {
+			return true
+		}
+	}
+	return false
+}
+
