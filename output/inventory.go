@@ -3,13 +3,13 @@ package output
 import (
 	"os"
 	"time"
-	"fmt"
 	"errors"
 	"strings"
 	"io/ioutil"
 	"encoding/json"
-	"github.com/Olling/Enrolld/config"
+	"github.com/Olling/slog"
 	"github.com/Olling/Enrolld/utils"
+	"github.com/Olling/Enrolld/config"
 )
 
 func CategorizeInventories(inventories []utils.ServerInfo) ([]string, map[string][]utils.ServerInfo) {
@@ -57,7 +57,7 @@ func GetInventoryInJSON(inventories []utils.ServerInfo) (string, error) {
 		if len(server.AnsibleProperties) != 0 {
 			propertiesjsonbytes, err := json.Marshal(server.AnsibleProperties)
 			if err != nil {
-				fmt.Println("Error in converting map to json", err)
+				slog.PrintError("Error in converting map to json", err)
 			} else {
 				propertiesjson := string(propertiesjsonbytes)
 				propertiesjson = strings.TrimPrefix(propertiesjson, "{")
@@ -125,7 +125,7 @@ func GetInventory() ([]utils.ServerInfo, error) {
 
 	filelist, filelisterr := ioutil.ReadDir(config.Configuration.Path)
 	if filelisterr != nil {
-		fmt.Println(filelisterr)
+		slog.PrintError("Failed to get inventory:", filelisterr)
 		return nil, filelisterr
 	}
 
@@ -136,9 +136,8 @@ func GetInventory() ([]utils.ServerInfo, error) {
 		if child.IsDir() == false {
 			server,err := GetServer(child.Name())
 
-			//err.Error??? TODO
 			if err != nil && err.Error() != "Server was beyond max age" {
-				fmt.Println("Error while reading file", config.Configuration.Path + "/" + child.Name(), "Reason:", err)
+				slog.PrintError("Error while reading file", config.Configuration.Path + "/" + child.Name(), "Reason:", err)
 				continue
 			}
 

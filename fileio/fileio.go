@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"encoding/json"
+	"github.com/Olling/slog"
 	"github.com/Olling/Enrolld/utils"
 	"github.com/Olling/Enrolld/config"
-	l "github.com/Olling/Enrolld/logging"
 )
 
 
@@ -21,7 +21,7 @@ func WriteToFile(server utils.ServerInfo, path string, append bool) (err error) 
 
 	bytes, marshalErr := json.MarshalIndent(server, "", "\t")
 	if marshalErr != nil {
-		l.ErrorLog.Println("Error while converting to json")
+		slog.PrintError("Error while converting to json")
 		return marshalErr
 	}
 	content := string(bytes)
@@ -38,8 +38,8 @@ func WriteToFile(server utils.ServerInfo, path string, append bool) (err error) 
 	} else {
 		err := ioutil.WriteFile(path, []byte(content), 0644)
 		if err != nil {
-			l.ErrorLog.Println("Error while writing file")
-			l.ErrorLog.Println(err)
+			slog.PrintError("Error while writing file")
+			slog.PrintError(err)
 			return err
 		}
 		return nil
@@ -48,13 +48,13 @@ func WriteToFile(server utils.ServerInfo, path string, append bool) (err error) 
 
 func CheckScriptPath() (err error) {
 	if config.Configuration.ScriptPath == "" {
-		l.ErrorLog.Println("ScriptPath is empty: \"" + config.Configuration.ScriptPath + "\"")
+		slog.PrintError("ScriptPath is empty: \"" + config.Configuration.ScriptPath + "\"")
 		return fmt.Errorf("ScriptPath is empty")
 	} else {
 		_, existsErr := os.Stat(config.Configuration.ScriptPath)
 
 		if os.IsNotExist(existsErr) {
-			l.ErrorLog.Println("ScriptPath does not exist: \"" + config.Configuration.ScriptPath + "\"")
+			slog.PrintError("ScriptPath does not exist: \"" + config.Configuration.ScriptPath + "\"")
 			return fmt.Errorf("ScriptPath does not exist")
 		}
 	}

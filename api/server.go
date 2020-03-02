@@ -13,7 +13,7 @@ import (
 	"github.com/Olling/Enrolld/output"
 	"github.com/Olling/Enrolld/config"
 	"github.com/Olling/Enrolld/metrics"
-	input "github.com/Olling/Enrolld/input"
+	"github.com/Olling/Enrolld/input"
 )
 
 
@@ -26,14 +26,14 @@ func updateServer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	contentType := r.Header.Get("Content-type")
-	var servername string
+	var serverID string
 
 	if r.FormValue("FQDN") != "" {
-		servername = r.FormValue("FQDN")
+		serverID = r.FormValue("FQDN")
 	}
 
 	if r.Header.Get("FQDN") != "" {
-		servername = r.Header.Get("FQDN")
+		serverID = r.Header.Get("FQDN")
 	}
 
 	var server utils.ServerInfo
@@ -60,13 +60,13 @@ func updateServer(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	servername, err = input.VerifyFQDN(server.ServerID, requestIP)
-	server.ServerID = servername
+	serverID, err = input.VerifyFQDN(server.ServerID, requestIP)
+	server.ServerID = serverID
 
 	for _, fqdn := range config.Configuration.Blacklist {
 		if strings.ToLower(server.ServerID) == strings.ToLower(fqdn) {
 			slog.PrintDebug(server.ServerID + " (" + server.IP + ") is on the blacklist - Ignoring")
-			fmt.Fprintln(w, "Ignored")
+			fmt.Fprintln(w, "Server is blacklisted - Ignoring")
 			return
 		}
 	}
@@ -83,21 +83,20 @@ func updateServer(w http.ResponseWriter, r *http.Request) {
 
 
 func getServer(w http.ResponseWriter, r *http.Request) {
-	var servername string
+	var serverID string
 
 	params := mux.Vars(r)
-	servername = params["servername"]
+	serverID = params["serverid"]
 
-	if servername == "" {
-		keys, ok := r.URL.Query()["servername"]
+	if serverID == "" {
+		keys, ok := r.URL.Query()["serverid"]
 
 		if ok && len(keys) == 1 {
-			servername = r.URL.Query()["servername"][0]
+			serverID = r.URL.Query()["serverid"][0]
 		}
 	}
 
-	server, err := output.GetServer(servername)
-
+	server, err := output.GetServer(serverID)
 	if err != nil {
 		http.Error(w, http.StatusText(404), 404)
 		return
@@ -109,28 +108,26 @@ func getServer(w http.ResponseWriter, r *http.Request) {
 
 
 func deleteServer(w http.ResponseWriter, r *http.Request) {
-	var servername string
+	var serverID string
 
 	params := mux.Vars(r)
-	servername = params["servername"]
+	serverID = params["serverid"]
 
-	if servername == "" {
-		keys, ok := r.URL.Query()["servername"]
+	if serverID == "" {
+		keys, ok := r.URL.Query()["serverid"]
 
 		if ok && len(keys) == 1 {
-			servername = r.URL.Query()["servername"][0]
+			serverID = r.URL.Query()["serverid"][0]
 		}
 	}
 
-	_, err := output.GetServer(servername)
-
+	_, err := output.GetServer(serverID)
 	if err != nil {
 		http.Error(w, http.StatusText(404), 404)
 		return
 	}
 
-	err = fileio.DeleteServer(servername)
-
+	err = fileio.DeleteServer(serverID)
 	if err != nil {
 		http.Error(w, http.StatusText(500), 500)
 		return

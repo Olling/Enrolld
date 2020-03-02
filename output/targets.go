@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 	"crypto/sha1"
-	"github.com/Olling/Enrolld/config"
 	"github.com/Olling/Enrolld/utils"
+	"github.com/Olling/Enrolld/config"
 )
 
 type TargetList struct {
@@ -15,12 +15,12 @@ type TargetList struct {
 	Labels  map[string]string `json:"labels"`
 }
 
-func serverToTargetList(fqdn string, properties map[string]string, inventories []string) (label string,entry TargetList) {
+func serverToTargetList(serverID string, properties map[string]string, inventories []string) (label string,entry TargetList) {
 	if config.Configuration.TargetsPort != "" {
-		fqdn = fqdn + ":" + config.Configuration.TargetsPort
+		serverID = serverID + ":" + config.Configuration.TargetsPort
 	}
 
-	entry.Targets = []string{fqdn}
+	entry.Targets = []string{serverID}
 
 	if properties != nil {
 		entry.Labels = properties
@@ -56,7 +56,6 @@ func GetTargetsInJSON(servers []utils.ServerInfo) (string, error) {
 	entriesmap := make(map[string]TargetList)
 
 	for _, server := range servers {
-
 		label, entry := serverToTargetList(server.ServerID, server.AnsibleProperties, server.Inventories)
 
 		_, keyexists := entriesmap[label]

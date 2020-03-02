@@ -6,33 +6,33 @@ import (
 	"net/http"
 	"github.com/gorilla/mux"
 	"github.com/Olling/Enrolld/output"
-	input "github.com/Olling/Enrolld/input"
+	"github.com/Olling/Enrolld/input"
 )
 
 
 func getStatus(w http.ResponseWriter, r *http.Request) {
-	var serverid string
+	var serverID string
 	requestIP, _, err := net.SplitHostPort(r.RemoteAddr)
 
 	params := mux.Vars(r)
-	serverid = params["serverid"]
+	serverID = params["serverid"]
 
-	if serverid == "" {
+	if serverID == "" {
 		keys, ok := r.URL.Query()["serverid"]
 
 		if ok && len(keys) == 1 {
-			serverid = r.URL.Query()["serverid"][0]
+			serverID = r.URL.Query()["serverid"][0]
 		}
 	}
 
-	serverid, err = input.VerifyFQDN(serverid, requestIP)
+	serverID, err = input.VerifyFQDN(serverID, requestIP)
 	if err != nil {
 		http.Error(w, http.StatusText(404), 404)
 		fmt.Println(err)
 		return
 	}
 
-	_, err = output.GetServer(serverid)
+	_, err = output.GetServer(serverID)
 
 	if err != nil {
 		http.Error(w, http.StatusText(404), 404)

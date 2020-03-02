@@ -16,7 +16,6 @@ import (
 func SetupRouter() {
 	router := mux.NewRouter()
 
-	// api routes
 	router.HandleFunc("/", rootHandler)
 
 	router.HandleFunc("/server", getServer).Methods("GET")
