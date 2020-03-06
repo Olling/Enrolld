@@ -56,7 +56,7 @@ func GetTargetsInJSON(servers []utils.ServerInfo) (string, error) {
 	entriesmap := make(map[string]TargetList)
 
 	for _, server := range servers {
-		label, entry := serverToTargetList(server.ServerID, server.AnsibleProperties, server.Inventories)
+		label, entry := serverToTargetList(server.ServerID, server.Properties, server.Inventories)
 
 		_, keyexists := entriesmap[label]
 		if keyexists {

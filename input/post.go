@@ -76,7 +76,7 @@ func UpdateServer(server utils.ServerInfo, isNewServer bool) error {
 	}
 
 	var writeerr error
-	writeerr = fileio.WriteToFile(server, config.Configuration.Path + "/" + server.ServerID, false)
+	writeerr = fileio.WriteToFile(server, config.Configuration.FileBackendDirectory + "/" + server.ServerID, false)
 
 	if writeerr != nil {
 		return writeerr
@@ -104,7 +104,7 @@ func notification(subject string, message string, server utils.ServerInfo) {
 
 	env = append(env, fmt.Sprintf("SERVER_ID=%s", server.ServerID))
 	env = append(env, fmt.Sprintf("SERVER_IP=%s", server.IP))
-	env = append(env, fmt.Sprintf("SERVER_PROPERTIES=%s", server.AnsibleProperties))
+	env = append(env, fmt.Sprintf("SERVER_PROPERTIES=%s", server.Properties))
 	env = append(env, fmt.Sprintf("SERVER_INVENTORIES=%s", server.Inventories))
 	env = append(env, fmt.Sprintf("SERVER_LASTSEEN=%s", server.LastSeen))
 

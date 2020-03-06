@@ -1,21 +1,21 @@
 package config
 
 import (
-	"encoding/json"
 	"os"
-
-	l "github.com/Olling/Enrolld/logging"
+	"encoding/json"
+	"github.com/Olling/slog"
 )
 
+
 type configuration struct {
-	Path                   string
-	ScriptPath             string
-	NotificationScriptPath string
-	TempPath               string
-	LogPath                string
-	Port                   string
-	MaxAgeInMinutes        int
-	DefaultInventoryName   string
+	FileBackendDirectory	string
+	ScriptPath		string
+	NotificationScriptPath	string
+	TempPath		string
+	LogPath			string
+	Port			string
+	MaxAgeInMinutes		int
+	DefaultInventoryName	string
 
 	TargetsPort string
 	TlsPort     string
@@ -25,27 +25,29 @@ type configuration struct {
 	Timeout     int
 }
 
-var Configuration configuration
+var (
+	Configuration	configuration
+)
 
 func InitializeConfiguration(path string) {
 	file, _ := os.Open(path)
 
 	err := json.NewDecoder(file).Decode(&Configuration)
 	if err != nil {
-		// needs looging (errorlog)
-		l.ErrorLog.Println("Error while reading the configuration file - Exiting")
-		l.ErrorLog.Println(err)
+		slog.PrintError("Error while reading the configuration file - Exiting")
+		slog.PrintError(err)
 		os.Exit(1)
 	}
 
-	_, err = os.Stat(Configuration.Path)
+	_, err = os.Stat(Configuration.FileBackendDirectory)
 
 	if os.IsNotExist(err) {
-		err := os.MkdirAll(Configuration.Path, 0744)
+		err := os.MkdirAll(Configuration.FileBackendDirectory, 0744)
 		if err != nil {
-			l.ErrorLog.Println(err)
+			slog.PrintError(err)
 		} else {
-			l.InfoLog.Println("Created: " + Configuration.Path)
+			slog.PrintInfo("Created: " + Configuration.FileBackendDirectory)
 		}
 	}
+
 }

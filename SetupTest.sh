@@ -19,7 +19,7 @@ do
                 \"inventory1\",
                 \"inventory2\"
         ],
-        \"AnsibleProperties\": {
+        \"Properties\": {
                 \"domain\": \"Olling.local\",
                 \"environment\": \"internal\"
         }

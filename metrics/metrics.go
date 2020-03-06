@@ -54,7 +54,7 @@ var (
 			}
 
 			// recursive iterate
-			filepath.Walk(config.Configuration.Path, readSize)
+			filepath.Walk(config.Configuration.FileBackendDirectory, readSize)
 
 			return float64(size)
 		})

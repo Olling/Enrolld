@@ -1,14 +1,13 @@
 package output
 
 import (
-	"os"
 	"time"
 	"errors"
 	"strings"
 	"io/ioutil"
-	"encoding/json"
 	"github.com/Olling/slog"
 	"github.com/Olling/Enrolld/utils"
+	"github.com/Olling/Enrolld/fileio"
 	"github.com/Olling/Enrolld/config"
 )
 
@@ -31,89 +30,82 @@ func CategorizeInventories(inventories []utils.ServerInfo) ([]string, map[string
 }
 
 
-func GetInventoryInJSON(inventories []utils.ServerInfo) (string, error) {
-	inventoryjson := "{"
-
-	keys, inventoryMap := CategorizeInventories(inventories)
-
-	inventoryjson += "\n\t\"" + config.Configuration.DefaultInventoryName + "\"\t: {\n\t\"hosts\"\t: ["
-	for _, inventory := range inventories {
-		inventoryjson += "\"" + inventory.ServerID + "\", "
-	}
-	inventoryjson = strings.TrimSuffix(inventoryjson, ", ")
-	inventoryjson += "]\n\t},"
-
-	for _, key := range keys {
-		inventoryjson += "\n\t\"" + key + "\"\t: {\n\t\"hosts\"\t: ["
-		for _, inventory := range inventoryMap[key] {
-			inventoryjson += "\"" + inventory.ServerID + "\", "
-		}
-		inventoryjson = strings.TrimSuffix(inventoryjson, ", ")
-		inventoryjson += "]\n\t},"
+func GetInventoryInJSON(servers []utils.ServerInfo) (json string, err error) {
+	type Group struct {
+		Hosts		[]string `json:"hosts"`
 	}
 
-	inventoryjson += "\n\t\"_meta\" : {\n\t\t\"hostvars\" : {"
+	type Meta struct {
+		Hostvars	map[string]map[string]string `json:"hostvars"`
+	}
 
-	for _, server := range inventories {
-		if len(server.AnsibleProperties) != 0 {
-			propertiesjsonbytes, err := json.Marshal(server.AnsibleProperties)
-			if err != nil {
-				slog.PrintError("Error in converting map to json", err)
-			} else {
-				propertiesjson := string(propertiesjsonbytes)
-				propertiesjson = strings.TrimPrefix(propertiesjson, "{")
-				propertiesjson = strings.TrimSuffix(propertiesjson, "}")
-				inventoryjson += "\n\t\t\t\"" + server.ServerID + "\": {\n\t\t\t\t" + propertiesjson + "\n\t\t\t},"
+	var inventory = make(map[string]interface{})
+	hostvars := make(map[string]map[string]string)
+	inventory["_meta"] = Meta{Hostvars: hostvars}
+
+	for _, server := range servers {
+		for _,serverInventory := range server.Inventories {
+			if _,ok := inventory[serverInventory]; ok {
+				group := inventory[serverInventory].(Group)
+				group.Hosts = append(group.Hosts, server.ServerID)
+				inventory[serverInventory] = group
+
+				continue
 			}
+
+			inventory[serverInventory] = Group{Hosts: []string{server.ServerID}}
 		}
+
+		if server.Properties == nil {
+			continue
+		}
+
+		meta := inventory["_meta"].(Meta)
+		meta.Hostvars[server.ServerID] = server.Properties
+		inventory["_meta"] = meta
+
+		continue
 	}
 
-	inventoryjson = strings.TrimSuffix(inventoryjson, ",")
-	inventoryjson += "\n\t\t}\n\t}\n}"
+	json,err = utils.StructToJson(inventory)
 
-	return inventoryjson, nil
+	return json, err
 }
 
 
 func GetServer(serverID string) (server utils.ServerInfo, err error) {
-	file, err := os.Open(config.Configuration.Path + "/" + serverID)
-	defer file.Close()
-	if err != nil {
-		return server,err
-	}
-
-	decoder := json.NewDecoder(file)
-	err = decoder.Decode(&server)
-	file.Close()
+	err = fileio.LoadFromFile(&server, config.Configuration.FileBackendDirectory + "/" + serverID)
 
 	if err != nil {
 		return server, err
-	} else {
-		layout := "2006-01-02 15:04:05.999999999 -0700 MST"
-
-		if strings.Contains(server.LastSeen, "m=") {
-			server.LastSeen = strings.Split(server.LastSeen, " m=")[0]
-		}
-
-		date, err := time.Parse(layout, server.LastSeen)
-
-		if err == nil {
-			return server, err
-		}
-
-		date = date.Add(time.Minute * time.Duration(config.Configuration.MaxAgeInMinutes))
-
-		if date.After(time.Now()) {
-			return server,nil
-		}
-
-		return server, errors.New("Server was beyond max age")
 	}
+
+	fileio.AddOverwrites(&server)
+
+	layout := "2006-01-02 15:04:05.999999999 -0700 MST"
+
+	if strings.Contains(server.LastSeen, "m=") {
+		server.LastSeen = strings.Split(server.LastSeen, " m=")[0]
+	}
+
+	date, err := time.Parse(layout, server.LastSeen)
+
+	if err == nil {
+		return server, err
+	}
+
+	date = date.Add(time.Minute * time.Duration(config.Configuration.MaxAgeInMinutes))
+
+	if date.After(time.Now()) {
+		return server,nil
+	}
+
+	return server, errors.New("Server was beyond max age")
 }
 
 
 func GetInventoryCount() float64 {
-	filelist, filelisterr := ioutil.ReadDir(config.Configuration.Path)
+	filelist, filelisterr := ioutil.ReadDir(config.Configuration.FileBackendDirectory)
 	if filelisterr != nil {
 		return 0
 	}
@@ -125,7 +117,7 @@ func GetInventoryCount() float64 {
 func GetInventory() ([]utils.ServerInfo, error) {
 	var inventory []utils.ServerInfo
 
-	filelist, filelisterr := ioutil.ReadDir(config.Configuration.Path)
+	filelist, filelisterr := ioutil.ReadDir(config.Configuration.FileBackendDirectory)
 	if filelisterr != nil {
 		slog.PrintError("Failed to get inventory:", filelisterr)
 		return nil, filelisterr
@@ -139,7 +131,7 @@ func GetInventory() ([]utils.ServerInfo, error) {
 			server, err := GetServer(child.Name())
 
 			if err != nil && err.Error() != "Server was beyond max age" {
-				slog.PrintError("Error while reading file", config.Configuration.Path + "/" + child.Name(), "Reason:", err)
+				slog.PrintError("Error while reading file", config.Configuration.FileBackendDirectory + "/" + child.Name(), "Reason:", err)
 				continue
 			}
 
@@ -149,7 +141,7 @@ func GetInventory() ([]utils.ServerInfo, error) {
 	return inventory, nil
 }
 
-func GetFilteredInventory(ansibleInventories []string, ansibleProperties map[string]string) ([]utils.ServerInfo, error) {
+func GetFilteredInventory(inventories []string, properties map[string]string) ([]utils.ServerInfo, error) {
 	inventory, err := GetInventory()
 	var filteredInventory []utils.ServerInfo
 
@@ -158,17 +150,17 @@ func GetFilteredInventory(ansibleInventories []string, ansibleProperties map[str
 	}
 
 	for _, server := range inventory {
-		if len(ansibleInventories) != 0 {
-			for _,ansibleInventory := range ansibleInventories {
-				if !utils.StringExistsInArray(server.Inventories, ansibleInventory) {
+		if len(inventories) != 0 {
+			for _,inventory := range inventories {
+				if !utils.StringExistsInArray(server.Inventories, inventory) {
 					continue
 				}
 			}
 
 		}
-		if len(ansibleProperties) != 0 {
-			for key, value := range ansibleProperties {
-				if !utils.KeyValueExistsInMap(server.AnsibleProperties, key, value) {
+		if len(properties) != 0 {
+			for key, value := range properties {
+				if !utils.KeyValueExistsInMap(server.Properties, key, value) {
 					continue
 				}
 			}

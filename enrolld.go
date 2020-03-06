@@ -10,6 +10,7 @@ import (
 
 func main() {
 	config.InitializeConfiguration("/etc/enrolld/enrolld.conf")
+	fileio.LoadOverwrites()
 
 	scriptPathErr := fileio.CheckScriptPath()
 	if scriptPathErr != nil {
