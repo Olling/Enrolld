@@ -36,7 +36,7 @@ func updateServer(w http.ResponseWriter, r *http.Request) {
 		serverID = r.Header.Get("FQDN")
 	}
 
-	var server utils.ServerInfo
+	var server utils.Server
 
 	switch contentType {
 	case "application/json":

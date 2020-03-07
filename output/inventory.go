@@ -11,17 +11,18 @@ import (
 	"github.com/Olling/Enrolld/config"
 )
 
-func CategorizeInventories(inventories []utils.ServerInfo) ([]string, map[string][]utils.ServerInfo) {
-	keys := make([]string, 0)
-	results := make(map[string][]utils.ServerInfo)
 
-	for _, inventory := range inventories {
-		for _, foundInventoryName := range inventory.Inventories {
-			if results[foundInventoryName] != nil {
-				results[foundInventoryName] = append(results[foundInventoryName], inventory)
+func CategorizeGroups(servers []utils.Server) ([]string, map[string][]utils.Server) {
+	keys := make([]string, 0)
+	results := make(map[string][]utils.Server)
+
+	for _,server := range servers {
+		for _, group := range server.Groups {
+			if results[group] != nil {
+				results[group] = append(results[group], server)
 			} else {
-				keys = append(keys, foundInventoryName)
-				results[foundInventoryName] = []utils.ServerInfo{inventory}
+				keys = append(keys, group)
+				results[group] = []utils.Server{server}
 			}
 		}
 	}
@@ -30,7 +31,7 @@ func CategorizeInventories(inventories []utils.ServerInfo) ([]string, map[string
 }
 
 
-func GetInventoryInJSON(servers []utils.ServerInfo) (json string, err error) {
+func GetInventoryInJSON(servers []utils.Server) (json string, err error) {
 	type Group struct {
 		Hosts		[]string `json:"hosts"`
 	}
@@ -44,7 +45,7 @@ func GetInventoryInJSON(servers []utils.ServerInfo) (json string, err error) {
 	inventory["_meta"] = Meta{Hostvars: hostvars}
 
 	for _, server := range servers {
-		for _,serverInventory := range server.Inventories {
+		for _,serverInventory := range server.Groups {
 			if _,ok := inventory[serverInventory]; ok {
 				group := inventory[serverInventory].(Group)
 				group.Hosts = append(group.Hosts, server.ServerID)
@@ -73,7 +74,7 @@ func GetInventoryInJSON(servers []utils.ServerInfo) (json string, err error) {
 }
 
 
-func GetServer(serverID string) (server utils.ServerInfo, err error) {
+func GetServer(serverID string) (server utils.Server, err error) {
 	err = fileio.LoadFromFile(&server, config.Configuration.FileBackendDirectory + "/" + serverID)
 
 	if err != nil {
@@ -104,7 +105,7 @@ func GetServer(serverID string) (server utils.ServerInfo, err error) {
 }
 
 
-func GetInventoryCount() float64 {
+func GetServerCount() float64 {
 	filelist, filelisterr := ioutil.ReadDir(config.Configuration.FileBackendDirectory)
 	if filelisterr != nil {
 		return 0
@@ -114,8 +115,8 @@ func GetInventoryCount() float64 {
 }
 
 
-func GetInventory() ([]utils.ServerInfo, error) {
-	var inventory []utils.ServerInfo
+func GetServers() ([]utils.Server, error) {
+	var inventory []utils.Server
 
 	filelist, filelisterr := ioutil.ReadDir(config.Configuration.FileBackendDirectory)
 	if filelisterr != nil {
@@ -141,23 +142,24 @@ func GetInventory() ([]utils.ServerInfo, error) {
 	return inventory, nil
 }
 
-func GetFilteredInventory(inventories []string, properties map[string]string) ([]utils.ServerInfo, error) {
-	inventory, err := GetInventory()
-	var filteredInventory []utils.ServerInfo
+func GetFilteredServersList(groups []string, properties map[string]string) ([]utils.Server, error) {
+	servers, err := GetServers()
+	var filteredServers []utils.Server
 
 	if err != nil {
-		return inventory, err
+		return filteredServers, err
 	}
 
-	for _, server := range inventory {
-		if len(inventories) != 0 {
-			for _,inventory := range inventories {
-				if !utils.StringExistsInArray(server.Inventories, inventory) {
+	for _, server := range servers {
+		if len(groups) != 0 {
+			for _,group := range groups {
+				if !utils.StringExistsInArray(server.Groups, group) {
 					continue
 				}
 			}
 
 		}
+
 		if len(properties) != 0 {
 			for key, value := range properties {
 				if !utils.KeyValueExistsInMap(server.Properties, key, value) {
@@ -166,10 +168,7 @@ func GetFilteredInventory(inventories []string, properties map[string]string) ([
 			}
 		}
 
-		filteredInventory = append(filteredInventory, server)
+		filteredServers = append(filteredServers, server)
 	}
-
-	return filteredInventory, nil
+	return filteredServers, nil
 }
-
-

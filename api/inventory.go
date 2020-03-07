@@ -8,16 +8,16 @@ import (
 )
 
 func getInventory(w http.ResponseWriter, r *http.Request) {
-	inventories, inventorieserr := output.GetInventory()
+	servers, err := output.GetServers()
 
-	if inventorieserr != nil {
-		slog.PrintError(inventorieserr)
+	if err != nil {
+		slog.PrintError(err)
 		http.Error(w, http.StatusText(500), 500)
 	}
 
-	inventory, inventoryErr := output.GetInventoryInJSON(inventories)
-	if inventoryErr != nil {
-		slog.PrintError(inventoryErr)
+	inventory, err := output.GetInventoryInJSON(servers)
+	if err != nil {
+		slog.PrintError(err)
 		http.Error(w, http.StatusText(500), 500)
 		return
 	}

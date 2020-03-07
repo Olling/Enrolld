@@ -58,7 +58,7 @@ func VerifyFQDN(serverid string, requestIP string) (string, error) {
 
 
 
-func UpdateServer(server utils.ServerInfo, isNewServer bool) error {
+func UpdateServer(server utils.Server, isNewServer bool) error {
 	server.LastSeen = time.Now().String()
 
 	if !server.Exist() || isNewServer {
@@ -91,7 +91,7 @@ func UpdateServer(server utils.ServerInfo, isNewServer bool) error {
 }
 
 
-func notification(subject string, message string, server utils.ServerInfo) {
+func notification(subject string, message string, server utils.Server) {
 	binary, err := exec.LookPath(config.Configuration.NotificationScriptPath)
 	if err != nil {
 		slog.PrintError("Could not find the notification script in the given path", config.Configuration.NotificationScriptPath, err)
@@ -105,7 +105,7 @@ func notification(subject string, message string, server utils.ServerInfo) {
 	env = append(env, fmt.Sprintf("SERVER_ID=%s", server.ServerID))
 	env = append(env, fmt.Sprintf("SERVER_IP=%s", server.IP))
 	env = append(env, fmt.Sprintf("SERVER_PROPERTIES=%s", server.Properties))
-	env = append(env, fmt.Sprintf("SERVER_INVENTORIES=%s", server.Inventories))
+	env = append(env, fmt.Sprintf("SERVER_INVENTORIES=%s", server.Groups))
 	env = append(env, fmt.Sprintf("SERVER_LASTSEEN=%s", server.LastSeen))
 
 	cmd.Env = env
@@ -119,7 +119,7 @@ func notification(subject string, message string, server utils.ServerInfo) {
 }
 
 
-func callEnrolldScript(server utils.ServerInfo) (err error) {
+func callEnrolldScript(server utils.Server) (err error) {
 	scriptPathErr := fileio.CheckScriptPath()
 
 	if scriptPathErr != nil {
@@ -132,7 +132,7 @@ func callEnrolldScript(server utils.ServerInfo) (err error) {
 	}
 
 	patchonly := false
-	for _, inventory := range server.Inventories {
+	for _, inventory := range server.Groups {
 		if inventory == "patchonly" {
 			patchonly = true
 		}
@@ -149,7 +149,7 @@ func callEnrolldScript(server utils.ServerInfo) (err error) {
 			}
 		}
 
-		json, _ := output.GetInventoryInJSON([]utils.ServerInfo{server})
+		json, _ := output.GetInventoryInJSON([]utils.Server{server})
 		json = strings.Replace(json, "\"", "\\\"", -1)
 
 		ioutil.WriteFile(tempDirectory+"/singledynamicinventory", []byte("#!/bin/bash\necho \""+json+"\""), 0755)

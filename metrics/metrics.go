@@ -34,7 +34,7 @@ var (
 		Subsystem: "enrolld",
 		Name:      "servers_in_inventory",
 		Help:      "Total amount of servers in inventory",
-	}, output.GetInventoryCount)
+	}, output.GetServerCount)
 
 	DataUsage = promauto.NewGaugeFunc(prometheus.GaugeOpts{
 		Subsystem: "enrolld",

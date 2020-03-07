@@ -15,9 +15,9 @@ do
         \"ServerID\": \"Server$counter\",
         \"IP\": \"1.2.3.4\",
         \"LastSeen\": \"2020-02-20 20:00:00.423709525 +0100 CET m=+1935960.050243285\",
-        \"Inventories\": [
-                \"inventory1\",
-                \"inventory2\"
+        \"Groups\": [
+                \"group1\",
+                \"group2\"
         ],
         \"Properties\": {
                 \"domain\": \"Olling.local\",

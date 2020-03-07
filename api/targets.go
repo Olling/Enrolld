@@ -7,7 +7,7 @@ import (
 )
 
 func getTargets(w http.ResponseWriter, r *http.Request) {
-	servers, err := output.GetInventory()
+	servers, err := output.GetServers()
 	if err != nil {
 		fmt.Println(err)
 		http.Error(w, http.StatusText(500), http.StatusInternalServerError)

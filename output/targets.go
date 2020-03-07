@@ -15,21 +15,20 @@ type TargetList struct {
 	Labels  map[string]string `json:"labels"`
 }
 
-func serverToTargetList(serverID string, properties map[string]string, inventories []string) (label string,entry TargetList) {
+func serverToTargetList(server utils.Server) (label string, entry TargetList) {
 	if config.Configuration.TargetsPort != "" {
-		serverID = serverID + ":" + config.Configuration.TargetsPort
+		server.ServerID = server.ServerID + ":" + config.Configuration.TargetsPort
 	}
 
-	entry.Targets = []string{serverID}
+	entry.Targets = []string{server.ServerID}
 
-	if properties != nil {
-		entry.Labels = properties
+	if server.Properties != nil {
+		entry.Labels = server.Properties
 	} else {
 		entry.Labels = make(map[string]string)
 	}
 
-	s_inventories := strings.Join(inventories, ", ")
-	entry.Labels["inventories"] = s_inventories
+	entry.Labels["groups"] = strings.Join(server.Groups, ", ")
 
 	if len(entry.Labels) == 0 {
 		label = "nolabels"
@@ -52,11 +51,11 @@ func serverToTargetList(serverID string, properties map[string]string, inventori
 }
 
 
-func GetTargetsInJSON(servers []utils.ServerInfo) (string, error) {
+func GetTargetsInJSON(servers []utils.Server) (string, error) {
 	entriesmap := make(map[string]TargetList)
 
 	for _, server := range servers {
-		label, entry := serverToTargetList(server.ServerID, server.Properties, server.Inventories)
+		label, entry := serverToTargetList(server)
 
 		_, keyexists := entriesmap[label]
 		if keyexists {
