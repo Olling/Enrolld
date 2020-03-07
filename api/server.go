@@ -8,12 +8,10 @@ import (
 	"io/ioutil"
 	"github.com/gorilla/mux"
 	"github.com/Olling/slog"
+	"github.com/Olling/Enrolld/input"
 	"github.com/Olling/Enrolld/utils"
-	"github.com/Olling/Enrolld/fileio"
 	"github.com/Olling/Enrolld/output"
 	"github.com/Olling/Enrolld/config"
-	"github.com/Olling/Enrolld/metrics"
-	"github.com/Olling/Enrolld/input"
 )
 
 
@@ -77,8 +75,6 @@ func updateServer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	input.UpdateServer(server, isNewServer)
-
-	metrics.ServersUpdated.Inc()
 }
 
 
@@ -127,11 +123,9 @@ func deleteServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = fileio.DeleteServer(serverID)
+	err = input.RemoveServer(serverID)
 	if err != nil {
 		http.Error(w, http.StatusText(500), 500)
 		return
 	}
-
-	metrics.ServersDeleted.Inc()
 }

@@ -15,8 +15,10 @@ import (
 	"github.com/Olling/Enrolld/utils"
 	"github.com/Olling/Enrolld/output"
 	"github.com/Olling/Enrolld/fileio"
+	"github.com/Olling/Enrolld/metrics"
 	"github.com/Olling/Enrolld/config"
 )
+
 
 func VerifyFQDN(serverid string, requestIP string) (string, error) {
 	var fqdn string
@@ -57,6 +59,13 @@ func VerifyFQDN(serverid string, requestIP string) (string, error) {
 }
 
 
+func RemoveServer(serverID string) error {
+	err := fileio.DeleteServer(config.Configuration.FileBackendDirectory + "/" + serverID)
+	if err == nil {
+		metrics.ServersDeleted.Inc()
+	}
+	return err
+}
 
 func UpdateServer(server utils.Server, isNewServer bool) error {
 	server.LastSeen = time.Now().String()
@@ -67,7 +76,7 @@ func UpdateServer(server utils.Server, isNewServer bool) error {
 		err := callEnrolldScript(server)
 		if err != nil {
 			slog.PrintError("Error running script against " + server.ServerID + "(" + server.IP + ")" + ": " + err.Error())
-			notification("Enrolld failure", "Failed to enroll the following new server: " + server.ServerID + "(" + server.IP + ")", server)
+			utils.Notification("Enrolld failure", "Failed to enroll the following new server: " + server.ServerID + "(" + server.IP + ")", server)
 
 			return err
 		} else {
@@ -83,39 +92,13 @@ func UpdateServer(server utils.Server, isNewServer bool) error {
 	} else {
 		if isNewServer {
 			slog.PrintInfo("Enrolled the following new machine:", server.ServerID, "(" + server.IP + ")")
+			metrics.ServersAdded.Inc()
 		} else {
 			slog.PrintInfo("Updated the following machine:", server.ServerID, "(" + server.IP + ")")
+			metrics.ServersUpdated.Inc()
 		}
 	}
 	return nil
-}
-
-
-func notification(subject string, message string, server utils.Server) {
-	binary, err := exec.LookPath(config.Configuration.NotificationScriptPath)
-	if err != nil {
-		slog.PrintError("Could not find the notification script in the given path", config.Configuration.NotificationScriptPath, err)
-	}
-	cmd := exec.Command(binary)
-
-	env := os.Environ()
-	env = append(env, fmt.Sprintf("SUBJECT=%s", subject))
-	env = append(env, fmt.Sprintf("MESSAGE=%s", message))
-
-	env = append(env, fmt.Sprintf("SERVER_ID=%s", server.ServerID))
-	env = append(env, fmt.Sprintf("SERVER_IP=%s", server.IP))
-	env = append(env, fmt.Sprintf("SERVER_PROPERTIES=%s", server.Properties))
-	env = append(env, fmt.Sprintf("SERVER_INVENTORIES=%s", server.Groups))
-	env = append(env, fmt.Sprintf("SERVER_LASTSEEN=%s", server.LastSeen))
-
-	cmd.Env = env
-
-	startErr := cmd.Start()
-	if startErr != nil {
-		slog.PrintError("Could not send notification", startErr)
-	}
-
-	cmd.Wait()
 }
 
 

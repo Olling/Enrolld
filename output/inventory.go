@@ -90,13 +90,11 @@ func GetServer(serverID string) (server utils.Server, err error) {
 	}
 
 	date, err := time.Parse(layout, server.LastSeen)
-
-	if err == nil {
+	if err != nil {
 		return server, err
 	}
 
 	date = date.Add(time.Minute * time.Duration(config.Configuration.MaxAgeInMinutes))
-
 	if date.After(time.Now()) {
 		return server,nil
 	}
@@ -106,12 +104,12 @@ func GetServer(serverID string) (server utils.Server, err error) {
 
 
 func GetServerCount() float64 {
-	filelist, filelisterr := ioutil.ReadDir(config.Configuration.FileBackendDirectory)
-	if filelisterr != nil {
+	servers, err := GetServers()
+	if err != nil {
 		return 0
 	}
 
-	return float64(len(filelist))
+	return float64(len(servers))
 }
 
 
@@ -131,8 +129,8 @@ func GetServers() ([]utils.Server, error) {
 		if child.IsDir() == false {
 			server, err := GetServer(child.Name())
 
-			if err != nil && err.Error() != "Server was beyond max age" {
-				slog.PrintError("Error while reading file", config.Configuration.FileBackendDirectory + "/" + child.Name(), "Reason:", err)
+			if err != nil {
+				slog.PrintDebug("Could not get server:", config.Configuration.FileBackendDirectory + "/" + child.Name(), "Reason:", err)
 				continue
 			}
 
