@@ -4,7 +4,6 @@ import (
 	"time"
 	"errors"
 	"strings"
-	"io/ioutil"
 	"github.com/Olling/slog"
 	"github.com/Olling/Enrolld/utils"
 	"github.com/Olling/Enrolld/fileio"
@@ -116,10 +115,10 @@ func GetServerCount() float64 {
 func GetServers() ([]utils.Server, error) {
 	var inventory []utils.Server
 
-	filelist, filelisterr := ioutil.ReadDir(config.Configuration.FileBackendDirectory)
-	if filelisterr != nil {
-		slog.PrintError("Failed to get inventory:", filelisterr)
-		return nil, filelisterr
+	filelist, err := fileio.GetFileList(config.Configuration.FileBackendDirectory)
+	if err != nil {
+		slog.PrintError("Failed to get inventory:", err)
+		return nil, err
 	}
 
 	utils.SyncGetInventoryMutex.Lock()
