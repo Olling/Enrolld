@@ -9,7 +9,8 @@ import (
 
 type configuration struct {
 	FileBackendDirectory	string
-	ScriptPath		string
+	ScriptDirectory		string
+	EnrollmentScriptPath	string
 	NotificationScriptPath	string
 	TempPath		string
 	LogPath			string
@@ -25,9 +26,11 @@ type configuration struct {
 	Timeout     int
 }
 
+
 var (
 	Configuration	configuration
 )
+
 
 func InitializeConfiguration(path string) {
 	file, _ := os.Open(path)

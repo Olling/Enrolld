@@ -1,19 +1,14 @@
 package input
 
 import (
-	"os"
 	"fmt"
 	"net"
-	"os/exec"
-	"io/ioutil"
 	"time"
 	"regexp"
 	"errors"
 	"strings"
-	"syscall"
 	"github.com/Olling/slog"
 	"github.com/Olling/Enrolld/utils"
-	"github.com/Olling/Enrolld/output"
 	"github.com/Olling/Enrolld/fileio"
 	"github.com/Olling/Enrolld/metrics"
 	"github.com/Olling/Enrolld/config"
@@ -58,6 +53,9 @@ func VerifyFQDN(serverid string, requestIP string) (string, error) {
 	return serverid, nil
 }
 
+func ServerExist(server utils.Server) bool {
+	return fileio.FileExist(config.Configuration.FileBackendDirectory + "/" + server.ServerID)
+}
 
 func RemoveServer(serverID string) error {
 	err := fileio.DeleteServer(config.Configuration.FileBackendDirectory + "/" + serverID)
@@ -70,12 +68,12 @@ func RemoveServer(serverID string) error {
 func UpdateServer(server utils.Server, isNewServer bool) error {
 	server.LastSeen = time.Now().String()
 
-	if !server.Exist() || isNewServer {
+	if !ServerExist(server) || isNewServer {
 		isNewServer = true
 
-		err := callEnrolldScript(server)
+		err := RunScript(config.Configuration.EnrollmentScriptPath,server, "Enroll", config.Configuration.Timeout)
 		if err != nil {
-			slog.PrintError("Error running script against " + server.ServerID + "(" + server.IP + ")" + ": " + err.Error())
+			slog.PrintError("Error running script against", server.ServerID, "(" + server.IP + "):", err)
 			utils.Notification("Enrolld failure", "Failed to enroll the following new server: " + server.ServerID + "(" + server.IP + ")", server)
 
 			return err
@@ -85,7 +83,7 @@ func UpdateServer(server utils.Server, isNewServer bool) error {
 	}
 
 	var writeerr error
-	writeerr = fileio.WriteToFile(server, config.Configuration.FileBackendDirectory + "/" + server.ServerID, false)
+	writeerr = fileio.WriteStructToFile(server, config.Configuration.FileBackendDirectory + "/" + server.ServerID, false)
 
 	if writeerr != nil {
 		return writeerr
@@ -102,73 +100,13 @@ func UpdateServer(server utils.Server, isNewServer bool) error {
 }
 
 
-func callEnrolldScript(server utils.Server) (err error) {
-	scriptPathErr := fileio.CheckScriptPath()
-
-	if scriptPathErr != nil {
-		return scriptPathErr
-	}
-
+func RunScript(scriptPath string, server utils.Server, scriptID string, timeout int) error {
 	if server.ServerID == "" {
-		slog.PrintError("Failed to call Enrollment Script - ServerID is empty!")
+		slog.PrintError("Failed to call", scriptID, "script - ServerID is empty!")
 		return fmt.Errorf("ServerID was not given")
 	}
 
-	patchonly := false
-	for _, inventory := range server.Groups {
-		if inventory == "patchonly" {
-			patchonly = true
-		}
-	}
+	err := fileio.RunScript(scriptPath, server, scriptID, timeout)
 
-	if !patchonly {
-		tempDirectory := config.Configuration.TempPath + "/" + server.ServerID
-		_, existsErr := os.Stat(tempDirectory)
-		if os.IsNotExist(existsErr) {
-			createErr := os.MkdirAll(tempDirectory, 0755)
-			if createErr != nil {
-				slog.PrintError(createErr)
-				return fmt.Errorf("Could not create temp directory: " + tempDirectory)
-			}
-		}
-
-		json, _ := output.GetInventoryInJSON([]utils.Server{server})
-		json = strings.Replace(json, "\"", "\\\"", -1)
-
-		ioutil.WriteFile(tempDirectory+"/singledynamicinventory", []byte("#!/bin/bash\necho \""+json+"\""), 0755)
-
-		cmd := exec.Command("/bin/bash", config.Configuration.ScriptPath, tempDirectory+"/singledynamicinventory", server.ServerID)
-
-		outfile, writeerr := os.Create(config.Configuration.LogPath + "/" + server.ServerID + ".log")
-		if writeerr != nil {
-			slog.PrintError("Error creating file", outfile.Name, writeerr)
-		}
-
-		defer outfile.Close()
-		cmd.Stdout = outfile
-
-		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-
-		if startErr := cmd.Start(); err != nil {
-			slog.PrintError("Could not start the enrolld script", startErr)
-			return startErr
-		}
-
-		timer := time.AfterFunc(time.Duration(config.Configuration.Timeout) * time.Second, func() {
-			slog.PrintError("The server " + server.ServerID + " have reached the timeout - Killing process", cmd.Process.Pid)
-			pgid, err := syscall.Getpgid(cmd.Process.Pid)
-			if err == nil {
-				syscall.Kill(-pgid, 15)
-			}
-		})
-
-		execErr := cmd.Wait()
-		timer.Stop()
-
-		if execErr != nil {
-			slog.PrintError("Error while excecuting script. Please see the log for more info: " + config.Configuration.LogPath + "/" + server.ServerID + ".log")
-			return execErr
-		}
-	}
-	return nil
+	return err
 }

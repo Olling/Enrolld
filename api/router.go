@@ -42,6 +42,10 @@ func SetupRouter() {
 	router.HandleFunc("/overwrite", deleteOverwrite).Methods("Delete")
 	router.HandleFunc("/overwrite/{overwriteid}", deleteOverwrite).Methods("Delete")
 
+	router.HandleFunc("/script", runScript).Methods("POST")
+	router.HandleFunc("/script/{scriptid}/{serverid}", runScript).Methods("POST")
+	router.HandleFunc("/scripts", getScripts).Methods("GET")
+
 	router.HandleFunc("/targets", getTargets).Methods("GET")
 	router.HandleFunc("/inventory", getInventory).Methods("GET")
 

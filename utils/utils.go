@@ -4,6 +4,7 @@ import (
 	"os"
 	"fmt"
 	"sync"
+	"regexp"
 	"os/exec"
 	"encoding/json"
 	"github.com/Olling/slog"
@@ -15,6 +16,7 @@ var (
 	SyncOutputMutex		sync.Mutex
 	SyncGetInventoryMutex	sync.Mutex
 	Overwrites		map[string]Overwrite
+	Scripts			map[string]Script
 )
 
 
@@ -32,17 +34,11 @@ type Overwrite struct {
 	Properties		map[string]string
 }
 
-
-func (server Server) Exist() bool {
-	_, existsErr := os.Stat(config.Configuration.FileBackendDirectory + "/" + server.ServerID)
-
-	if os.IsNotExist(existsErr) {
-		return false
-	} else {
-		return true
-	}
+type Script struct {
+	Description	string
+	Path		string
+	Timeout		int
 }
-
 
 type Server struct {
 	ServerID	string
@@ -110,4 +106,51 @@ func Notification(subject string, message string, server Server) {
 	}
 
 	cmd.Wait()
+}
+
+func ValidInput(input string) bool {
+	matched,_ := regexp.MatchString(input, "^[a-zA-Z0-9_-.]*$")
+	return !matched
+}
+
+func GetInventoryInJSON(servers []Server) (json string, err error) {
+	type Group struct {
+		Hosts		[]string `json:"hosts"`
+	}
+
+	type Meta struct {
+		Hostvars	map[string]map[string]string `json:"hostvars"`
+	}
+
+	var inventory = make(map[string]interface{})
+	hostvars := make(map[string]map[string]string)
+	inventory["_meta"] = Meta{Hostvars: hostvars}
+
+	for _, server := range servers {
+		for _,serverInventory := range server.Groups {
+			if _,ok := inventory[serverInventory]; ok {
+				group := inventory[serverInventory].(Group)
+				group.Hosts = append(group.Hosts, server.ServerID)
+				inventory[serverInventory] = group
+
+				continue
+			}
+
+			inventory[serverInventory] = Group{Hosts: []string{server.ServerID}}
+		}
+
+		if server.Properties == nil {
+			continue
+		}
+
+		meta := inventory["_meta"].(Meta)
+		meta.Hostvars[server.ServerID] = server.Properties
+		inventory["_meta"] = meta
+
+		continue
+	}
+
+	json,err = StructToJson(inventory)
+
+	return json, err
 }
