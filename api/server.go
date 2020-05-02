@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net"
+	"regexp"
 	"strings"
 	"net/http"
 	"io/ioutil"
@@ -20,6 +21,7 @@ func updateServer(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		http.Error(w, http.StatusText(500), 500)
+		slog.PrintError("Failed to get request IP")
 		return
 	}
 
@@ -36,8 +38,7 @@ func updateServer(w http.ResponseWriter, r *http.Request) {
 
 	var server utils.Server
 
-	switch contentType {
-	case "application/json":
+	if contentType == "application/json" {
 		if r.Body == nil {
 			slog.PrintError("Empty POST received from:" , requestIP)
 			http.Error(w, "Please send a request body in JSON format", 400)
@@ -50,6 +51,7 @@ func updateServer(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Please send a request body in JSON format", 400)
 			return
 		}
+
 		err = utils.StructFromJson(json, &server)
 		if err != nil {
 			slog.PrintError("Could not decode JSON from:" , requestIP, err)
@@ -61,9 +63,11 @@ func updateServer(w http.ResponseWriter, r *http.Request) {
 	serverID, err = input.VerifyFQDN(server.ServerID, requestIP)
 	server.ServerID = serverID
 
-	for _, fqdn := range config.Configuration.Blacklist {
-		if strings.ToLower(server.ServerID) == strings.ToLower(fqdn) {
-			slog.PrintDebug(server.ServerID + " (" + server.IP + ") is on the blacklist - Ignoring")
+	for _,regexString := range config.Configuration.Blacklist {
+		slog.PrintDebug("Found regular expression:", regexString)
+		if match,_ := regexp.MatchString(regexString, server.ServerID); match {
+			slog.PrintInfo(server.ServerID + " (" + server.IP + ") is on the blacklist - Ignoring")
+			slog.PrintDebug(server.ServerID + " (" + server.IP + ") matched the following blacklist regular expression:", regexString)
 			fmt.Fprintln(w, "Server is blacklisted - Ignoring")
 			return
 		}
