@@ -5,8 +5,10 @@ import (
 	"net"
 	"net/http"
 	"github.com/gorilla/mux"
-	"github.com/Olling/Enrolld/output"
+	"github.com/Olling/slog"
+	"github.com/Olling/Enrolld/auth"
 	"github.com/Olling/Enrolld/input"
+	"github.com/Olling/Enrolld/output"
 )
 
 
@@ -32,11 +34,17 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = output.GetServer(serverID)
+	server, err := output.GetServer(serverID)
 
 	if err != nil {
 		http.Error(w, http.StatusText(404), 404)
 		fmt.Println(err)
+		return
+	}
+
+	if !auth.CheckAccess(w,r, "read", server) {
+		http.Error(w, http.StatusText(401), 401)
+		slog.PrintError("Unauthorized call to get status on server", server.ServerID,"from", requestIP)
 		return
 	}
 

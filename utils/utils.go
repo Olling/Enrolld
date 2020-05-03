@@ -28,9 +28,9 @@ type KeyValue struct {
 
 type Overwrite struct {
 	ServerIDRegexp		string
-	InventoriesRegexp	string
+	GroupRegexp		string
 	PropertiesRegexp	KeyValue
-	Inventories		[]string
+	Groups			[]string
 	Properties		map[string]string
 }
 

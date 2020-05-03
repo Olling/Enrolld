@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"github.com/gorilla/mux"
 	"github.com/Olling/slog"
+	"github.com/Olling/Enrolld/auth"
 	"github.com/Olling/Enrolld/input"
 	"github.com/Olling/Enrolld/config"
 	"github.com/Olling/Enrolld/utils"
@@ -62,6 +63,12 @@ func runScript(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.PrintError("The script", scriptID, "requested by", requestIP, "got a server ID that was not enrolled:", serverID)
 		http.Error(w, "Please provide a valid ServerID", 400)
+		return
+	}
+
+	if !auth.CheckAccess(w,r, "execute", server) {
+		http.Error(w, http.StatusText(401), 401)
+		slog.PrintError("Unauthorized call to run script", scriptID ,"from", requestIP)
 		return
 	}
 

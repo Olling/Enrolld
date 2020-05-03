@@ -66,5 +66,5 @@ func SetupRouter() {
 
 
 func rootHandler(w http.ResponseWriter, _ *http.Request) {
-	fmt.Fprintln(w, "Welcome!")
+	fmt.Fprintln(w, "Welcome to Enrolld")
 }

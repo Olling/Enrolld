@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"github.com/gorilla/mux"
 	"github.com/Olling/slog"
+	"github.com/Olling/Enrolld/auth"
 	"github.com/Olling/Enrolld/input"
 	"github.com/Olling/Enrolld/utils"
 	"github.com/Olling/Enrolld/output"
@@ -63,6 +64,12 @@ func updateServer(w http.ResponseWriter, r *http.Request) {
 	serverID, err = input.VerifyFQDN(server.ServerID, requestIP)
 	server.ServerID = serverID
 
+	if !auth.CheckAccess(w,r, "write", server) {
+		http.Error(w, http.StatusText(401), 401)
+		slog.PrintError("Unauthorized call to update", server.ServerID, "from", requestIP)
+		return
+	}
+
 	for _,regexString := range config.Configuration.Blacklist {
 		slog.PrintDebug("Found regular expression:", regexString)
 		if match,_ := regexp.MatchString(regexString, server.ServerID); match {
@@ -83,6 +90,7 @@ func updateServer(w http.ResponseWriter, r *http.Request) {
 
 
 func getServer(w http.ResponseWriter, r *http.Request) {
+	requestIP, _, err := net.SplitHostPort(r.RemoteAddr)
 	var serverID string
 
 	params := mux.Vars(r)
@@ -102,12 +110,19 @@ func getServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !auth.CheckAccess(w, r, "read", server) {
+		http.Error(w, http.StatusText(401), 401)
+		slog.PrintError("Unauthorized call to read", server.ServerID, "from", requestIP)
+		return
+	}
+
 	serverjson, err := utils.StructToJson(server)
 	fmt.Fprintln(w, serverjson)
 }
 
 
 func deleteServer(w http.ResponseWriter, r *http.Request) {
+	requestIP, _, err := net.SplitHostPort(r.RemoteAddr)
 	var serverID string
 
 	params := mux.Vars(r)
@@ -121,9 +136,15 @@ func deleteServer(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	_, err := output.GetServer(serverID)
+	server, err := output.GetServer(serverID)
 	if err != nil {
 		http.Error(w, http.StatusText(404), 404)
+		return
+	}
+
+	if !auth.CheckAccess(w, r, "write", server) {
+		http.Error(w, http.StatusText(401), 401)
+		slog.PrintError("Unauthorized call to delete", server.ServerID, "from", requestIP)
 		return
 	}
 

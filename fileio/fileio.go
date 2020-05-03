@@ -157,7 +157,7 @@ func AddOverwrites(server *utils.Server) {
 
 		matchAnsibleInventories := false
 		for _,inventory := range server.Groups {
-			if match,_ := regexp.MatchString(overwrite.InventoriesRegexp, inventory); match {
+			if match,_ := regexp.MatchString(overwrite.GroupRegexp, inventory); match {
 				matchAnsibleInventories = true
 				break
 			}
@@ -166,7 +166,7 @@ func AddOverwrites(server *utils.Server) {
 		matchAnsibleProperties,_ := regexp.MatchString(overwrite.PropertiesRegexp.Value, server.Properties[overwrite.PropertiesRegexp.Key])
 
 		if matchServerID && matchAnsibleInventories && matchAnsibleProperties {
-			server.Groups = append(server.Groups, overwrite.Inventories...)
+			server.Groups = append(server.Groups, overwrite.Groups...)
 
 
 			for key,value := range overwrite.Properties {

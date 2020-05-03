@@ -6,14 +6,16 @@ import (
 	"github.com/Olling/Enrolld/api"
 	"github.com/Olling/Enrolld/fileio"
 	"github.com/Olling/Enrolld/config"
+	"github.com/Olling/Enrolld/auth"
 )
 
 func main() {
 	config.InitializeConfiguration("/etc/enrolld/enrolld.conf")
+
 	fileio.LoadOverwrites()
 	fileio.LoadScripts()
 
-	slog.SetLogLevel(slog.Info)
+	slog.SetLogLevel(slog.Debug)
 
 	scriptPathErr := fileio.CheckScriptPath(config.Configuration.EnrollmentScriptPath)
 	if scriptPathErr != nil {
@@ -21,5 +23,6 @@ func main() {
 		os.Exit(1)
 	}
 
+	auth.Initialize()
 	api.SetupRouter()
 }
