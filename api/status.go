@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net"
 	"net/http"
 	"github.com/gorilla/mux"
@@ -30,7 +29,6 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 	serverID, err = input.VerifyFQDN(serverID, requestIP)
 	if err != nil {
 		http.Error(w, http.StatusText(404), 404)
-		fmt.Println(err)
 		return
 	}
 
@@ -38,17 +36,19 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		http.Error(w, http.StatusText(404), 404)
-		fmt.Println(err)
 		return
 	}
 
 	if !auth.CheckAccess(w,r, "read", server) {
 		http.Error(w, http.StatusText(401), 401)
-		slog.PrintError("Unauthorized call to get status on server", server.ServerID,"from", requestIP)
+		slog.PrintError("Unauthorized call to get status on server", server.ServerID, "from", requestIP)
 		return
 	}
 
-	//TODO write 202 code (enrolling)
+	if server.Active() {
+		http.Error(w, http.StatusText(208), 208)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
 }

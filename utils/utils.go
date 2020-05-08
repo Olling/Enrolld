@@ -3,7 +3,9 @@ package utils
 import (
 	"os"
 	"fmt"
+	"time"
 	"sync"
+	"errors"
 	"regexp"
 	"os/exec"
 	"encoding/json"
@@ -15,8 +17,10 @@ import (
 var (
 	SyncOutputMutex		sync.Mutex
 	SyncGetInventoryMutex	sync.Mutex
+	SyncActiveMutex		sync.Mutex
 	Overwrites		map[string]Overwrite
 	Scripts			map[string]Script
+	ActiveServers		map[string]time.Time
 )
 
 
@@ -153,4 +157,35 @@ func GetInventoryInJSON(servers []Server) (json string, err error) {
 	json,err = StructToJson(inventory)
 
 	return json, err
+}
+
+
+func (server Server) MarkActive() error {
+	SyncActiveMutex.Lock()
+	defer SyncActiveMutex.Unlock()
+
+	if _, ok := ActiveServers[server.ServerID]; !ok {
+		ActiveServers[server.ServerID] = time.Now()
+		return nil
+	}
+	return errors.New("Server is already active")
+}
+
+
+func (server Server) MarkInactive() {
+	SyncActiveMutex.Lock()
+	defer SyncActiveMutex.Unlock()
+
+	if _, ok := ActiveServers[server.ServerID]; ok {
+		delete(ActiveServers, server.ServerID)
+	}
+}
+
+
+func (server Server) Active() bool {
+	SyncActiveMutex.Lock()
+	defer SyncActiveMutex.Unlock()
+
+	_, exist := ActiveServers[server.ServerID]
+	return exist
 }

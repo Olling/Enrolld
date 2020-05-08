@@ -64,6 +64,14 @@ func updateServer(w http.ResponseWriter, r *http.Request) {
 	serverID, err = input.VerifyFQDN(server.ServerID, requestIP)
 	server.ServerID = serverID
 
+	err = server.MarkActive()
+	if err != nil {
+		http.Error(w, "The server is currently active", 208)
+		return
+	}
+
+	defer server.MarkInactive()
+
 	if !auth.CheckAccess(w,r, "write", server) {
 		http.Error(w, http.StatusText(401), 401)
 		slog.PrintError("Unauthorized call to update", server.ServerID, "from", requestIP)
