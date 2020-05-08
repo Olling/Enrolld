@@ -6,6 +6,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/Olling/slog"
 	"github.com/Olling/Enrolld/auth"
+	"github.com/Olling/Enrolld/utils"
 	"github.com/Olling/Enrolld/input"
 	"github.com/Olling/Enrolld/output"
 )
@@ -32,8 +33,12 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	server, err := output.GetServer(serverID)
+	if utils.IsServerActive(serverID) {
+		http.Error(w, http.StatusText(208), 208)
+		return
+	}
 
+	server, err := output.GetServer(serverID)
 	if err != nil {
 		http.Error(w, http.StatusText(404), 404)
 		return
@@ -45,10 +50,6 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if server.Active() {
-		http.Error(w, http.StatusText(208), 208)
-		return
-	}
 
 	w.WriteHeader(http.StatusOK)
 }

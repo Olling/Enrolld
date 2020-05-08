@@ -43,7 +43,7 @@ func VerifyFQDN(serverid string, requestIP string) (string, error) {
 			addr := addresses[0]
 			if addr != "" {
 				addr = strings.TrimSuffix(addr, ".")
-				slog.PrintInfo("Server \"" + serverid + "\"'s domain looks wrong - Replacing it with \"" + addr + "\"")
+				slog.PrintDebug("Server \"" + serverid + "\"'s domain looks wrong - Replacing it with \"" + addr + "\"")
 				serverid = addr
 			}
 		} else {

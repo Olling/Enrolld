@@ -161,6 +161,10 @@ func GetInventoryInJSON(servers []Server) (json string, err error) {
 
 
 func (server Server) MarkActive() error {
+	if ActiveServers == nil {
+		ActiveServers = make(map[string]time.Time)
+	}
+
 	SyncActiveMutex.Lock()
 	defer SyncActiveMutex.Unlock()
 
@@ -173,6 +177,10 @@ func (server Server) MarkActive() error {
 
 
 func (server Server) MarkInactive() {
+	if ActiveServers == nil {
+		return
+	}
+
 	SyncActiveMutex.Lock()
 	defer SyncActiveMutex.Unlock()
 
@@ -182,10 +190,14 @@ func (server Server) MarkInactive() {
 }
 
 
-func (server Server) Active() bool {
+func IsServerActive(serverID string) bool {
+	if ActiveServers == nil {
+		return false
+	}
+
 	SyncActiveMutex.Lock()
 	defer SyncActiveMutex.Unlock()
 
-	_, exist := ActiveServers[server.ServerID]
+	_, exist := ActiveServers[serverID]
 	return exist
 }
