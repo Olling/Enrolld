@@ -6,7 +6,7 @@ import (
 	"github.com/Olling/Enrolld/api"
 	"github.com/Olling/Enrolld/auth"
 	"github.com/Olling/Enrolld/data"
-	"github.com/Olling/Enrolld/config"
+	"github.com/Olling/Enrolld/dataaccess/config"
 )
 
 func main() {

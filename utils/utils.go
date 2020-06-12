@@ -10,7 +10,7 @@ import (
 	"os/exec"
 	"encoding/json"
 	"github.com/Olling/slog"
-	"github.com/Olling/Enrolld/config"
+	"github.com/Olling/Enrolld/dataaccess/config"
 )
 
 

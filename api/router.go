@@ -8,7 +8,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/Olling/slog"
 	"github.com/gorilla/handlers"
-	"github.com/Olling/Enrolld/config"
+	"github.com/Olling/Enrolld/dataaccess/config"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 

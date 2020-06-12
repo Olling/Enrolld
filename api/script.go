@@ -8,9 +8,9 @@ import (
 	"github.com/Olling/slog"
 	"github.com/Olling/Enrolld/auth"
 	"github.com/Olling/Enrolld/input"
-	"github.com/Olling/Enrolld/config"
 	"github.com/Olling/Enrolld/utils"
 	"github.com/Olling/Enrolld/output"
+	"github.com/Olling/Enrolld/dataaccess/config"
 )
 
 

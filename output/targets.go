@@ -7,7 +7,7 @@ import (
 	"strings"
 	"crypto/sha1"
 	"github.com/Olling/Enrolld/utils"
-	"github.com/Olling/Enrolld/config"
+	"github.com/Olling/Enrolld/dataaccess/config"
 )
 
 type TargetList struct {

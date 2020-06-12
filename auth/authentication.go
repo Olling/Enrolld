@@ -6,8 +6,8 @@ import (
 	"github.com/Olling/slog"
 	"golang.org/x/crypto/bcrypt"
 	"github.com/Olling/Enrolld/utils"
-	"github.com/Olling/Enrolld/config"
 	"github.com/Olling/Enrolld/dataaccess/fileio"
+	"github.com/Olling/Enrolld/dataaccess/config"
 )
 
 

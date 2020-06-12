@@ -4,8 +4,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Olling/Enrolld/config"
 	"github.com/Olling/Enrolld/output"
+	"github.com/Olling/Enrolld/dataaccess/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
