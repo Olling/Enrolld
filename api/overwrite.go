@@ -8,7 +8,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/Olling/slog"
 	"github.com/Olling/Enrolld/utils"
-	"github.com/Olling/Enrolld/fileio"
+	"github.com/Olling/Enrolld/dataaccess/fileio"
 )
 
 func getOverwrites(w http.ResponseWriter, r *http.Request) {

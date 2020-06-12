@@ -6,8 +6,8 @@ import (
 	"strings"
 	"github.com/Olling/slog"
 	"github.com/Olling/Enrolld/utils"
-	"github.com/Olling/Enrolld/fileio"
 	"github.com/Olling/Enrolld/config"
+	"github.com/Olling/Enrolld/dataaccess/fileio"
 )
 
 

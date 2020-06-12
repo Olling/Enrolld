@@ -4,9 +4,9 @@ import (
 	"os"
 	"github.com/Olling/slog"
 	"github.com/Olling/Enrolld/api"
-	"github.com/Olling/Enrolld/fileio"
-	"github.com/Olling/Enrolld/config"
 	"github.com/Olling/Enrolld/auth"
+	"github.com/Olling/Enrolld/data"
+	"github.com/Olling/Enrolld/config"
 )
 
 func main() {
