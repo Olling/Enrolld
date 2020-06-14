@@ -4,7 +4,9 @@ import (
 	"os"
 	"fmt"
 	"path"
+	"sync"
 	"time"
+	"errors"
 	"regexp"
 	"strings"
 	"syscall"
@@ -15,17 +17,22 @@ import (
 	"encoding/json"
 	"github.com/Olling/slog"
 	"github.com/Olling/Enrolld/utils"
+	"github.com/Olling/Enrolld/metrics"
+	"github.com/Olling/Enrolld/utils/objects"
 	"github.com/Olling/Enrolld/dataaccess/config"
 )
 
+var (
+	SyncOutputMutex		sync.Mutex
+)
 
 func DeleteServer(serverName string) error {
 	return os.Remove(config.Configuration.FileBackendDirectory + "/" + serverName)
 }
 
 func WriteToFile(filepath string, content string, appendToFile bool, filemode os.FileMode) (err error) {
-	utils.SyncOutputMutex.Lock()
-	defer utils.SyncOutputMutex.Unlock()
+	SyncOutputMutex.Lock()
+	defer SyncOutputMutex.Unlock()
 
 	if appendToFile {
 		file, fileerr := os.OpenFile(filepath, os.O_APPEND, filemode)
@@ -73,7 +80,6 @@ func CheckScriptPath(filepath string) error {
 	return nil
 }
 
-
 func LoadFromFile(s interface{}, filepath string) error {
 	file, err := os.Open(filepath)
 	defer file.Close()
@@ -89,20 +95,17 @@ func LoadFromFile(s interface{}, filepath string) error {
 	return nil
 }
 
-
-func LoadOverwrites() {
-	LoadFromFile(&utils.Overwrites, config.Configuration.FileBackendDirectory + "/overwrites.json")
+func LoadOverwrites(overwrites interface{}) {
+	LoadFromFile(&overwrites, config.Configuration.FileBackendDirectory + "/overwrites.json")
 }
 
-
-func GetFileList(directoryPath string) ([]os.FileInfo,error) {
+func GetFileList(directoryPath string) ([]os.FileInfo, error) {
 	filelist, err := ioutil.ReadDir(directoryPath)
 	return filelist, err
 }
 
-
-func LoadScripts() error {
-	utils.Scripts = make(map[string]utils.Script)
+func LoadScripts(scripts map[string]objects.Script) error {
+	scripts = make(map[string]objects.Script)
 
 	filelist, err := GetFileList(config.Configuration.ScriptDirectory)
 	if err != nil {
@@ -116,7 +119,7 @@ func LoadScripts() error {
 			continue
 		}
 
-		var script utils.Script
+		var script objects.Script
 		scriptID := directory.Name()
 		scriptPath := path.Join(config.Configuration.ScriptDirectory, scriptID)
 
@@ -125,15 +128,17 @@ func LoadScripts() error {
 			slog.PrintError("Failed to get script information from", path.Join(scriptPath, scriptID + ".json"))
 			continue
 		}
-		utils.Scripts[scriptID] = script
+
+		//TODO there might be a reference problem here
+		scripts[scriptID] = script
 	}
 
 	return nil
 }
 
 
-func SaveOverwrites() {
-	err := WriteStructToFile(utils.Overwrites, config.Configuration.FileBackendDirectory + "/overwrites.json", false)
+func SaveOverwrites(overwrites interface{}) {
+	err := WriteStructToFile(overwrites, config.Configuration.FileBackendDirectory + "/overwrites.json", false)
 	if err != nil {
 		slog.PrintError("Failed to write AnsibleAddons:", err)
 	}
@@ -151,8 +156,8 @@ func FileExist(filepath string) bool {
 }
 
 
-func AddOverwrites(server *utils.Server) {
-	for _,overwrite := range utils.Overwrites {
+func AddOverwrites(server *objects.Server, overwrites map[string]objects.Overwrite) {
+	for _,overwrite := range overwrites {
 		matchServerID,_ := regexp.MatchString(overwrite.ServerIDRegexp, server.ServerID)
 
 		matchAnsibleInventories := false
@@ -176,8 +181,7 @@ func AddOverwrites(server *utils.Server) {
 	}
 }
 
-
-func RunScript(scriptPath string, server utils.Server, scriptID string, timeout int) error {
+func RunScript(scriptPath string, server objects.Server, scriptID string, timeout int) error {
 	err := CheckScriptPath(scriptPath)
 	if err != nil {
 		return err
@@ -211,7 +215,7 @@ func RunScript(scriptPath string, server utils.Server, scriptID string, timeout 
 		}
 	}
 
-	json, _ := utils.GetInventoryInJSON([]utils.Server{server})
+	json, _ := utils.GetInventoryInJSON([]objects.Server{server})
 	json = strings.Replace(json, "\"", "\\\"", -1)
 	inventory := "#!/bin/bash\necho \"" + json + "\""
 
@@ -243,5 +247,106 @@ func RunScript(scriptPath string, server utils.Server, scriptID string, timeout 
 		return execErr
 	}
 
+	return nil
+}
+
+func GetServersFromDisk(overwrites map[string]objects.Overwrite) ([]objects.Server, error) {
+	var inventory []objects.Server
+
+	filelist, err := GetFileList(config.Configuration.FileBackendDirectory)
+	if err != nil {
+		slog.PrintError("Failed to get inventory:", err)
+		return nil, err
+	}
+
+//	utils.SyncGetInventoryMutex.Lock()
+//	defer utils.SyncGetInventoryMutex.Unlock()
+
+	for _, child := range filelist {
+		if child.IsDir() == false {
+			server, err := GetServerFromDisk(child.Name(), overwrites)
+
+			if err != nil {
+				slog.PrintDebug("Could not get server:", config.Configuration.FileBackendDirectory + "/" + child.Name(), "Reason:", err)
+				continue
+			}
+
+			inventory = append(inventory, server)
+		}
+	}
+	return inventory, nil
+}
+
+func ServerExistOnDisk(serverID string) bool {
+	return FileExist(config.Configuration.FileBackendDirectory + "/" + serverID)
+}
+
+func RemoveServerFromDisk(serverID string) error {
+	err := DeleteServer(config.Configuration.FileBackendDirectory + "/" + serverID)
+	if err == nil {
+		metrics.ServersDeleted.Inc()
+	}
+	return err
+}
+
+func GetServerFromDisk(serverID string, overwrites map[string]objects.Overwrite) (server objects.Server, err error) {
+	err = LoadFromFile(&server, config.Configuration.FileBackendDirectory + "/" + serverID)
+
+	if err != nil {
+		return server, err
+	}
+
+	AddOverwrites(&server, overwrites)
+
+	layout := "2006-01-02 15:04:05.999999999 -0700 MST"
+
+	if strings.Contains(server.LastSeen, "m=") {
+		server.LastSeen = strings.Split(server.LastSeen, " m=")[0]
+	}
+
+	date, err := time.Parse(layout, server.LastSeen)
+	if err != nil {
+		return server, err
+	}
+
+	date = date.Add(time.Minute * time.Duration(config.Configuration.MaxAgeInMinutes))
+	if date.After(time.Now()) {
+		return server,nil
+	}
+
+	return server, errors.New("Server was beyond max age")
+}
+
+func UpdateServerOnDisk(server objects.Server, isNewServer bool) error {
+	server.LastSeen = time.Now().String()
+
+	if !ServerExistOnDisk(server.ServerID) || isNewServer {
+		isNewServer = true
+
+		err := RunScript(config.Configuration.EnrollmentScriptPath,server, "Enroll", config.Configuration.Timeout)
+		if err != nil {
+			slog.PrintError("Error running script against", server.ServerID, "(" + server.IP + "):", err)
+			utils.Notification("Enrolld failure", "Failed to enroll the following new server: " + server.ServerID + "(" + server.IP + ")", server)
+
+			return err
+		} else {
+			slog.PrintInfo("Enrolld script successful: " + server.ServerID)
+		}
+	}
+
+	var writeerr error
+	writeerr = WriteStructToFile(server, config.Configuration.FileBackendDirectory + "/" + server.ServerID, false)
+
+	if writeerr != nil {
+		return writeerr
+	} else {
+		if isNewServer {
+			slog.PrintInfo("Enrolled the following new machine:", server.ServerID, "(" + server.IP + ")")
+			metrics.ServersAdded.Inc()
+		} else {
+			slog.PrintInfo("Updated the following machine:", server.ServerID, "(" + server.IP + ")")
+			metrics.ServersUpdated.Inc()
+		}
+	}
 	return nil
 }

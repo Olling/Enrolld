@@ -3,47 +3,18 @@ package auth
 import (
 	"regexp"
 	"net/http"
-	"github.com/Olling/slog"
 	"golang.org/x/crypto/bcrypt"
+	"github.com/Olling/Enrolld/dataaccess"
 	"github.com/Olling/Enrolld/utils"
-	"github.com/Olling/Enrolld/dataaccess/fileio"
-	"github.com/Olling/Enrolld/dataaccess/config"
+	"github.com/Olling/Enrolld/utils/objects"
 )
 
 
-var (
-	Users		map[string]User
-)
 
-
-type User struct {
-	Password		string
-	Encrypted		bool
-	Authorizations		[]Authorization
-}
-
-
-type Authorization struct {
-	Actions		[]string
-	UrlRegex	string
-	ServerIDRegex	string
-	GroupRegex	string
-}
-
-
-func Initialize() {
-	slog.PrintDebug("Initializing Authentication")
-	err := fileio.LoadFromFile(&Users, config.Configuration.FileBackendDirectory + "/auth.json")
-	if err != nil {
-		slog.PrintError("Failed to load auth.json", err)
-	}
-}
-
-
-func CheckAccess(w http.ResponseWriter, r *http.Request, action string, server utils.Server) bool {
+func CheckAccess(w http.ResponseWriter, r *http.Request, action string, server objects.Server) bool {
 	// Anonymous Access
-	if _,anonAccess := Users["anonymous"]; anonAccess {
-		for _,authorization := range Users["anonymous"].Authorizations {
+	if _,anonAccess := dataaccess.Users["anonymous"]; anonAccess {
+		for _,authorization := range dataaccess.Users["anonymous"].Authorizations {
 			if matched,_ := regexp.MatchString(authorization.UrlRegex, r.URL.String()); matched {
 				if utils.StringExistsInArray(authorization.Actions, action) {
 					return true
@@ -67,12 +38,11 @@ func CheckAccess(w http.ResponseWriter, r *http.Request, action string, server u
 	return authorize(r.URL.String(), username, server, action)
 }
 
-
 func authenticate(w http.ResponseWriter, r *http.Request, username string, password string) bool {
 	w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
 
 	authenticated := false
-	for name,user := range Users {
+	for name,user := range dataaccess.Users {
 		if name != username {continue}
 
 		if user.Encrypted {
@@ -89,16 +59,15 @@ func authenticate(w http.ResponseWriter, r *http.Request, username string, passw
 	return authenticated
 }
 
-
-func authorize(url string, username string, server utils.Server, action string) bool {
-	if _,userAccess := Users[username]; !userAccess {
+func authorize(url string, username string, server objects.Server, action string) bool {
+	if _,userAccess :=dataaccess.Users[username]; !userAccess {
 		return false
 	}
 
 	match_url := false
 
-	var auth Authorization
-	for _,authorization := range Users[username].Authorizations {
+	var auth objects.Authorization
+	for _,authorization := range dataaccess.Users[username].Authorizations {
 		if matched,_ := regexp.MatchString(authorization.UrlRegex, url); matched {
 			if utils.StringExistsInArray(authorization.Actions, action) {
 				auth = authorization

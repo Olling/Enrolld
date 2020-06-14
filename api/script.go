@@ -7,9 +7,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/Olling/slog"
 	"github.com/Olling/Enrolld/auth"
-	"github.com/Olling/Enrolld/input"
 	"github.com/Olling/Enrolld/utils"
-	"github.com/Olling/Enrolld/output"
+	"github.com/Olling/Enrolld/dataaccess"
 	"github.com/Olling/Enrolld/dataaccess/config"
 )
 
@@ -52,14 +51,14 @@ func runScript(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	script,ok := utils.Scripts[scriptID]
+	script,ok := dataaccess.Scripts[scriptID]
 	if !ok {
 		slog.PrintError("The script", scriptID, "requested by", requestIP, "was not found in memory")
 		http.Error(w, "Please provide a valid ScriptID", 400)
 		return
 	}
 
-	server, err := output.GetServer(serverID)
+	server, err := dataaccess.GetServer(serverID)
 	if err != nil {
 		slog.PrintError("The script", scriptID, "requested by", requestIP, "got a server ID that was not enrolled:", serverID)
 		http.Error(w, "Please provide a valid ServerID", 400)
@@ -76,7 +75,7 @@ func runScript(w http.ResponseWriter, r *http.Request) {
 		script.Timeout = config.Configuration.Timeout
 	}
 
-	err = input.RunScript(script.Path, server, scriptID, script.Timeout)
+	err = dataaccess.RunScript(script.Path, server, scriptID, script.Timeout)
 	if err != nil {
 		slog.PrintError("The script", scriptID, "requested by", requestIP, "returned an error", err)
 		http.Error(w, "Failed to run script", 500)
@@ -88,12 +87,12 @@ func runScript(w http.ResponseWriter, r *http.Request) {
 
 
 func getScripts(w http.ResponseWriter, r *http.Request) {
-	if utils.Scripts == nil {
+	if dataaccess.Scripts == nil {
 		fmt.Fprintln(w, "{}")
 		return
 	}
 
-	json, err := utils.StructToJson(utils.Scripts)
+	json, err := utils.StructToJson(dataaccess.Scripts)
 
 	if err != nil {
 		slog.PrintError("Failed to convert Scripts to json", err)

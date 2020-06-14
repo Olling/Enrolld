@@ -1,19 +1,14 @@
 package output
 
 import (
-	"time"
-	"errors"
-	"strings"
-	"github.com/Olling/slog"
 	"github.com/Olling/Enrolld/utils"
-	"github.com/Olling/Enrolld/dataaccess/fileio"
-	"github.com/Olling/Enrolld/dataaccess/config"
+	"github.com/Olling/Enrolld/utils/objects"
 )
 
 
-func CategorizeGroups(servers []utils.Server) ([]string, map[string][]utils.Server) {
+func CategorizeGroups(servers []objects.Server) ([]string, map[string][]objects.Server) {
 	keys := make([]string, 0)
-	results := make(map[string][]utils.Server)
+	results := make(map[string][]objects.Server)
 
 	for _,server := range servers {
 		for _, group := range server.Groups {
@@ -21,7 +16,7 @@ func CategorizeGroups(servers []utils.Server) ([]string, map[string][]utils.Serv
 				results[group] = append(results[group], server)
 			} else {
 				keys = append(keys, group)
-				results[group] = []utils.Server{server}
+				results[group] = []objects.Server{server}
 			}
 		}
 	}
@@ -30,7 +25,7 @@ func CategorizeGroups(servers []utils.Server) ([]string, map[string][]utils.Serv
 }
 
 
-func GetInventoryInJSON(servers []utils.Server) (json string, err error) {
+func GetInventoryInJSON(servers []objects.Server) (json string, err error) {
 	type Group struct {
 		Hosts		[]string `json:"hosts"`
 	}
@@ -70,102 +65,4 @@ func GetInventoryInJSON(servers []utils.Server) (json string, err error) {
 	json,err = utils.StructToJson(inventory)
 
 	return json, err
-}
-
-
-func GetServer(serverID string) (server utils.Server, err error) {
-	err = fileio.LoadFromFile(&server, config.Configuration.FileBackendDirectory + "/" + serverID)
-
-	if err != nil {
-		return server, err
-	}
-
-	fileio.AddOverwrites(&server)
-
-	layout := "2006-01-02 15:04:05.999999999 -0700 MST"
-
-	if strings.Contains(server.LastSeen, "m=") {
-		server.LastSeen = strings.Split(server.LastSeen, " m=")[0]
-	}
-
-	date, err := time.Parse(layout, server.LastSeen)
-	if err != nil {
-		return server, err
-	}
-
-	date = date.Add(time.Minute * time.Duration(config.Configuration.MaxAgeInMinutes))
-	if date.After(time.Now()) {
-		return server,nil
-	}
-
-	return server, errors.New("Server was beyond max age")
-}
-
-
-func GetServerCount() float64 {
-	servers, err := GetServers()
-	if err != nil {
-		return 0
-	}
-
-	return float64(len(servers))
-}
-
-
-func GetServers() ([]utils.Server, error) {
-	var inventory []utils.Server
-
-	filelist, err := fileio.GetFileList(config.Configuration.FileBackendDirectory)
-	if err != nil {
-		slog.PrintError("Failed to get inventory:", err)
-		return nil, err
-	}
-
-	utils.SyncGetInventoryMutex.Lock()
-	defer utils.SyncGetInventoryMutex.Unlock()
-
-	for _, child := range filelist {
-		if child.IsDir() == false {
-			server, err := GetServer(child.Name())
-
-			if err != nil {
-				slog.PrintDebug("Could not get server:", config.Configuration.FileBackendDirectory + "/" + child.Name(), "Reason:", err)
-				continue
-			}
-
-			inventory = append(inventory, server)
-		}
-	}
-	return inventory, nil
-}
-
-func GetFilteredServersList(groups []string, properties map[string]string) ([]utils.Server, error) {
-	servers, err := GetServers()
-	var filteredServers []utils.Server
-
-	if err != nil {
-		return filteredServers, err
-	}
-
-	for _, server := range servers {
-		if len(groups) != 0 {
-			for _,group := range groups {
-				if !utils.StringExistsInArray(server.Groups, group) {
-					continue
-				}
-			}
-
-		}
-
-		if len(properties) != 0 {
-			for key, value := range properties {
-				if !utils.KeyValueExistsInMap(server.Properties, key, value) {
-					continue
-				}
-			}
-		}
-
-		filteredServers = append(filteredServers, server)
-	}
-	return filteredServers, nil
 }

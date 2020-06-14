@@ -7,6 +7,7 @@ import (
 	"strings"
 	"crypto/sha1"
 	"github.com/Olling/Enrolld/utils"
+	"github.com/Olling/Enrolld/utils/objects"
 	"github.com/Olling/Enrolld/dataaccess/config"
 )
 
@@ -15,7 +16,7 @@ type TargetList struct {
 	Labels  map[string]string `json:"labels"`
 }
 
-func serverToTargetList(server utils.Server) (label string, entry TargetList) {
+func serverToTargetList(server objects.Server) (label string, entry TargetList) {
 	if config.Configuration.TargetsPort != "" {
 		server.ServerID = server.ServerID + ":" + config.Configuration.TargetsPort
 	}
@@ -51,7 +52,7 @@ func serverToTargetList(server utils.Server) (label string, entry TargetList) {
 }
 
 
-func GetTargetsInJSON(servers []utils.Server) (string, error) {
+func GetTargetsInJSON(servers []objects.Server) (string, error) {
 	entriesmap := make(map[string]TargetList)
 
 	for _, server := range servers {

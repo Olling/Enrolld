@@ -3,67 +3,62 @@ package utils
 import (
 	"os"
 	"fmt"
-	"time"
-	"sync"
+	"net"
 	"errors"
 	"regexp"
 	"os/exec"
+	"strings"
 	"encoding/json"
 	"github.com/Olling/slog"
+	"github.com/Olling/Enrolld/utils/objects"
 	"github.com/Olling/Enrolld/dataaccess/config"
 )
 
-
-var (
-	SyncOutputMutex		sync.Mutex
-	SyncGetInventoryMutex	sync.Mutex
-	SyncActiveMutex		sync.Mutex
-	Overwrites		map[string]Overwrite
-	Scripts			map[string]Script
-	ActiveServers		map[string]time.Time
-)
-
-
-type KeyValue struct {
-	Key			string
-	Value			string
-}
-
-
-type Overwrite struct {
-	ServerIDRegexp		string
-	GroupRegexp		string
-	PropertiesRegexp	KeyValue
-	Groups			[]string
-	Properties		map[string]string
-}
-
-type Script struct {
-	Description	string
-	Path		string
-	Timeout		int
-}
-
-type Server struct {
-	ServerID	string
-	IP		string
-	LastSeen	string
-	NewServer	bool `json:"NewServer,omitempty"`
-	Groups		[]string
-	Properties	map[string]string
-}
-
+//var (
+//	SyncOutputMutex		sync.Mutex
+//	SyncGetInventoryMutex	sync.Mutex
+//	SyncActiveMutex		sync.Mutex
+//	Overwrites		map[string]Overwrite
+//	Scripts			map[string]Script
+//	ActiveServers		map[string]time.Time
+//)
+//
+//type KeyValue struct {
+//	Key			string
+//	Value			string
+//}
+//
+//type Overwrite struct {
+//	ServerIDRegexp		string
+//	GroupRegexp		string
+//	PropertiesRegexp	KeyValue
+//	Groups			[]string
+//	Properties		map[string]string
+//}
+//
+//type Script struct {
+//	Description	string
+//	Path		string
+//	Timeout		int
+//}
+//
+//type Server struct {
+//	ServerID	string
+//	IP		string
+//	LastSeen	string
+//	NewServer	bool `json:"NewServer,omitempty"`
+//	Groups		[]string
+//	Properties	map[string]string
+//}
 
 func StructToJson(s interface{}) (string, error) {
 	bytes, marshalErr := json.MarshalIndent(s, "", "\t")
 	return string(bytes), marshalErr
 }
 
-
 func StructFromJson(input []byte, output interface{}) error {
 	return json.Unmarshal(input, &output)
 }
-
 
 func StringExistsInArray(array []string, required string) bool {
     for _, item := range array {
@@ -74,7 +69,6 @@ func StringExistsInArray(array []string, required string) bool {
     return false
 }
 
-
 func KeyValueExistsInMap(chart map[string]string, requiredKey string, requiredValue string) bool {
 	if value, ok := chart[requiredKey]; ok {
 		if requiredValue == value {
@@ -84,8 +78,7 @@ func KeyValueExistsInMap(chart map[string]string, requiredKey string, requiredVa
 	return false
 }
 
-
-func Notification(subject string, message string, server Server) {
+func Notification(subject string, message string, server objects.Server) {
 	binary, err := exec.LookPath(config.Configuration.NotificationScriptPath)
 	if err != nil {
 		slog.PrintError("Could not find the notification script in the given path", config.Configuration.NotificationScriptPath, err)
@@ -117,7 +110,7 @@ func ValidInput(input string) bool {
 	return !matched
 }
 
-func GetInventoryInJSON(servers []Server) (json string, err error) {
+func GetInventoryInJSON(servers []objects.Server) (json string, err error) {
 	type Group struct {
 		Hosts		[]string `json:"hosts"`
 	}
@@ -159,45 +152,41 @@ func GetInventoryInJSON(servers []Server) (json string, err error) {
 	return json, err
 }
 
+func VerifyFQDN(serverid string, requestIP string) (string, error) {
+	var fqdn string
 
-func (server Server) MarkActive() error {
-	if ActiveServers == nil {
-		ActiveServers = make(map[string]time.Time)
+	if serverid == "" {
+		addresses, err := net.LookupAddr(requestIP)
+		if err == nil && len(addresses) >= 1 {
+			addr := addresses[0]
+			if addr != "" {
+				addr = strings.TrimSuffix(addr, ".")
+				slog.PrintInfo("FQDN was empty (" + requestIP + ") but the IP had the following name: \"" + addr + "\"")
+				serverid = addr
+			}
+		} else {
+			return "", errors.New("FQDN is empty")
+		}
 	}
 
-	SyncActiveMutex.Lock()
-	defer SyncActiveMutex.Unlock()
-
-	if _, ok := ActiveServers[server.ServerID]; !ok {
-		ActiveServers[server.ServerID] = time.Now()
-		return nil
+	if m, _ := regexp.MatchString("^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])$", serverid); !m {
+		slog.PrintError("Received FQDN with illegal characters: \"", fqdn, "\" (", requestIP, ")")
+		return "", errors.New("Received FQDN with illegal characters: \"" + fqdn + "\" (" + requestIP + ")")
 	}
-	return errors.New("Server is already active")
+
+	if len(strings.Split(serverid, ".")) < 3 {
+		addresses, err := net.LookupAddr(requestIP)
+		if err == nil && len(addresses) >= 1 {
+			addr := addresses[0]
+			if addr != "" {
+				addr = strings.TrimSuffix(addr, ".")
+				slog.PrintDebug("Server \"" + serverid + "\"'s domain looks wrong - Replacing it with \"" + addr + "\"")
+				serverid = addr
+			}
+		} else {
+			slog.PrintError("Server \"" + serverid + "\"'s domain looks wrong, but no suitable name was found to replace it")
+		}
+	}
+	return serverid, nil
 }
 
-
-func (server Server) MarkInactive() {
-	if ActiveServers == nil {
-		return
-	}
-
-	SyncActiveMutex.Lock()
-	defer SyncActiveMutex.Unlock()
-
-	if _, ok := ActiveServers[server.ServerID]; ok {
-		delete(ActiveServers, server.ServerID)
-	}
-}
-
-
-func IsServerActive(serverID string) bool {
-	if ActiveServers == nil {
-		return false
-	}
-
-	SyncActiveMutex.Lock()
-	defer SyncActiveMutex.Unlock()
-
-	_, exist := ActiveServers[serverID]
-	return exist
-}

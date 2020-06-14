@@ -10,9 +10,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/Olling/slog"
 	"github.com/Olling/Enrolld/auth"
-	"github.com/Olling/Enrolld/input"
 	"github.com/Olling/Enrolld/utils"
-	"github.com/Olling/Enrolld/output"
+	"github.com/Olling/Enrolld/dataaccess"
+	"github.com/Olling/Enrolld/utils/objects"
 	"github.com/Olling/Enrolld/dataaccess/config"
 )
 
@@ -37,7 +37,7 @@ func updateServer(w http.ResponseWriter, r *http.Request) {
 		serverID = r.Header.Get("FQDN")
 	}
 
-	var server utils.Server
+	var server objects.Server
 
 	if contentType == "application/json" {
 		if r.Body == nil {
@@ -61,16 +61,16 @@ func updateServer(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	serverID, err = input.VerifyFQDN(server.ServerID, requestIP)
+	serverID, err = utils.VerifyFQDN(server.ServerID, requestIP)
 	server.ServerID = serverID
 
-	err = server.MarkActive()
+	err = dataaccess.MarkServerActive(server)
 	if err != nil {
 		http.Error(w, "The server is currently active", 208)
 		return
 	}
 
-	defer server.MarkInactive()
+	defer dataaccess.MarkServerInactive(server)
 
 	if !auth.CheckAccess(w,r, "write", server) {
 		http.Error(w, http.StatusText(401), 401)
@@ -93,7 +93,7 @@ func updateServer(w http.ResponseWriter, r *http.Request) {
 		isNewServer = true
 	}
 
-	input.UpdateServer(server, isNewServer)
+	dataaccess.UpdateServer(server, isNewServer)
 }
 
 
@@ -112,7 +112,7 @@ func getServer(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	server, err := output.GetServer(serverID)
+	server, err := dataaccess.GetServer(serverID)
 	if err != nil {
 		http.Error(w, http.StatusText(404), 404)
 		return
@@ -144,7 +144,7 @@ func deleteServer(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	server, err := output.GetServer(serverID)
+	server, err := dataaccess.GetServer(serverID)
 	if err != nil {
 		http.Error(w, http.StatusText(404), 404)
 		return
@@ -156,7 +156,7 @@ func deleteServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = input.RemoveServer(serverID)
+	err = dataaccess.RemoveServer(serverID)
 	if err != nil {
 		http.Error(w, http.StatusText(500), 500)
 		return

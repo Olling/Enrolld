@@ -7,8 +7,7 @@ import (
 	"github.com/Olling/slog"
 	"github.com/Olling/Enrolld/auth"
 	"github.com/Olling/Enrolld/utils"
-	"github.com/Olling/Enrolld/input"
-	"github.com/Olling/Enrolld/output"
+	"github.com/Olling/Enrolld/dataaccess"
 )
 
 
@@ -27,18 +26,18 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	serverID, err = input.VerifyFQDN(serverID, requestIP)
+	serverID, err = utils.VerifyFQDN(serverID, requestIP)
 	if err != nil {
 		http.Error(w, http.StatusText(404), 404)
 		return
 	}
 
-	if utils.IsServerActive(serverID) {
+	if dataaccess.IsServerActive(serverID) {
 		http.Error(w, http.StatusText(208), 208)
 		return
 	}
 
-	server, err := output.GetServer(serverID)
+	server, err := dataaccess.GetServer(serverID)
 	if err != nil {
 		http.Error(w, http.StatusText(404), 404)
 		return

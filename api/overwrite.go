@@ -8,11 +8,12 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/Olling/slog"
 	"github.com/Olling/Enrolld/utils"
-	"github.com/Olling/Enrolld/dataaccess/fileio"
+	"github.com/Olling/Enrolld/dataaccess"
+	"github.com/Olling/Enrolld/utils/objects"
 )
 
 func getOverwrites(w http.ResponseWriter, r *http.Request) {
-	json,err := utils.StructToJson(utils.Overwrites)
+	json,err := utils.StructToJson(dataaccess.Overwrites)
 	if err != nil {
 		http.Error(w, http.StatusText(404), 404)
 		return
@@ -33,8 +34,8 @@ func getOverwrite(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if _,ok := utils.Overwrites[overwriteID]; ok {
-		json,err := utils.StructToJson(utils.Overwrites[overwriteID])
+	if _,ok := dataaccess.Overwrites[overwriteID]; ok {
+		json,err := utils.StructToJson(dataaccess.Overwrites[overwriteID])
 		if err != nil {
 			http.Error(w, http.StatusText(404), 404)
 			return
@@ -46,7 +47,7 @@ func getOverwrite(w http.ResponseWriter, r *http.Request) {
 
 func addOverwrite(w http.ResponseWriter, r *http.Request) {
 	requestIP, _, err := net.SplitHostPort(r.RemoteAddr)
-	var overwrite utils.Overwrite
+	var overwrite objects.Overwrite
 
 	params := mux.Vars(r)
 	overwriteID := params["overwriteid"]
@@ -91,8 +92,8 @@ func addOverwrite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.Overwrites[overwriteID] = overwrite
-	fileio.SaveOverwrites()
+	dataaccess.Overwrites[overwriteID] = overwrite
+	dataaccess.SaveOverwrites()
 }
 
 func deleteOverwrite(w http.ResponseWriter, r *http.Request) {
@@ -107,5 +108,5 @@ func deleteOverwrite(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	delete(utils.Overwrites, overwriteID)
+	delete(dataaccess.Overwrites, overwriteID)
 }
