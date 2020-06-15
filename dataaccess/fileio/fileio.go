@@ -250,7 +250,7 @@ func RunScript(scriptPath string, server objects.Server, scriptID string, timeou
 	return nil
 }
 
-func GetServersFromDisk(overwrites map[string]objects.Overwrite) ([]objects.Server, error) {
+func GetServers(overwrites map[string]objects.Overwrite) ([]objects.Server, error) {
 	var inventory []objects.Server
 
 	filelist, err := GetFileList(config.Configuration.FileBackendDirectory)
@@ -264,7 +264,7 @@ func GetServersFromDisk(overwrites map[string]objects.Overwrite) ([]objects.Serv
 
 	for _, child := range filelist {
 		if child.IsDir() == false {
-			server, err := GetServerFromDisk(child.Name(), overwrites)
+			server, err := GetServer(child.Name(), overwrites)
 
 			if err != nil {
 				slog.PrintDebug("Could not get server:", config.Configuration.FileBackendDirectory + "/" + child.Name(), "Reason:", err)
@@ -277,11 +277,11 @@ func GetServersFromDisk(overwrites map[string]objects.Overwrite) ([]objects.Serv
 	return inventory, nil
 }
 
-func ServerExistOnDisk(serverID string) bool {
+func ServerExist(serverID string) bool {
 	return FileExist(config.Configuration.FileBackendDirectory + "/" + serverID)
 }
 
-func RemoveServerFromDisk(serverID string) error {
+func RemoveServer(serverID string) error {
 	err := DeleteServer(config.Configuration.FileBackendDirectory + "/" + serverID)
 	if err == nil {
 		metrics.ServersDeleted.Inc()
@@ -289,7 +289,7 @@ func RemoveServerFromDisk(serverID string) error {
 	return err
 }
 
-func GetServerFromDisk(serverID string, overwrites map[string]objects.Overwrite) (server objects.Server, err error) {
+func GetServer(serverID string, overwrites map[string]objects.Overwrite) (server objects.Server, err error) {
 	err = LoadFromFile(&server, config.Configuration.FileBackendDirectory + "/" + serverID)
 
 	if err != nil {
@@ -317,10 +317,10 @@ func GetServerFromDisk(serverID string, overwrites map[string]objects.Overwrite)
 	return server, errors.New("Server was beyond max age")
 }
 
-func UpdateServerOnDisk(server objects.Server, isNewServer bool) error {
+func UpdateServer(server objects.Server, isNewServer bool) error {
 	server.LastSeen = time.Now().String()
 
-	if !ServerExistOnDisk(server.ServerID) || isNewServer {
+	if !ServerExist(server.ServerID) || isNewServer {
 		isNewServer = true
 
 		err := RunScript(config.Configuration.EnrollmentScriptPath,server, "Enroll", config.Configuration.Timeout)

@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+	dataaccess.Initialize("file")
 	config.InitializeConfiguration("/etc/enrolld/enrolld.conf")
 
 	dataaccess.LoadOverwrites()
