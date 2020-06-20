@@ -6,7 +6,6 @@ import (
 	"github.com/Olling/slog"
 )
 
-
 type configuration struct {
 	FileBackendDirectory	string
 	ScriptDirectory		string
@@ -17,6 +16,7 @@ type configuration struct {
 	Port			string
 	MaxAgeInMinutes		int
 	DefaultInventoryName	string
+	ServerIDRegexp		string
 
 	TargetsPort string
 	TlsPort     string
@@ -26,11 +26,9 @@ type configuration struct {
 	Timeout     int
 }
 
-
 var (
 	Configuration	configuration
 )
-
 
 func InitializeConfiguration(path string) {
 	file, _ := os.Open(path)

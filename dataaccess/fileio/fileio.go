@@ -95,8 +95,8 @@ func LoadFromFile(s interface{}, filepath string) error {
 	return nil
 }
 
-func LoadOverwrites(overwrites interface{}) {
-	LoadFromFile(&overwrites, config.Configuration.FileBackendDirectory + "/overwrites.json")
+func LoadOverwrites(overwrites interface{}) error {
+	return LoadFromFile(&overwrites, config.Configuration.FileBackendDirectory + "/overwrites.json")
 }
 
 func GetFileList(directoryPath string) ([]os.FileInfo, error) {
@@ -137,13 +137,9 @@ func LoadScripts(scripts map[string]objects.Script) error {
 }
 
 
-func SaveOverwrites(overwrites interface{}) {
-	err := WriteStructToFile(overwrites, config.Configuration.FileBackendDirectory + "/overwrites.json", false)
-	if err != nil {
-		slog.PrintError("Failed to write AnsibleAddons:", err)
-	}
+func SaveOverwrites(overwrites interface{}) error {
+	return WriteStructToFile(overwrites, config.Configuration.FileBackendDirectory + "/overwrites.json", false)
 }
-
 
 func FileExist(filepath string) bool {
 	_, existsErr := os.Stat(filepath)
@@ -154,7 +150,6 @@ func FileExist(filepath string) bool {
 		return true
 	}
 }
-
 
 func AddOverwrites(server *objects.Server, overwrites map[string]objects.Overwrite) {
 	for _,overwrite := range overwrites {

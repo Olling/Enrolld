@@ -12,11 +12,13 @@ func DeleteServer(serverName string) error {
 	return nil
 }
 
-func LoadOverwrites(overwrites *interface{}) {
+func LoadOverwrites(overwrites interface{}) error {
 	//Write to overwrites
+	return nil
 }
 
-func SaveOverwrites(overwrites interface{}) {
+func SaveOverwrites(overwrites interface{}) error {
+	return nil
 }
 
 func AddOverwrites(server *objects.Server, overwrites map[string]objects.Overwrite) {
