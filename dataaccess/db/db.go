@@ -1,11 +1,11 @@
 package db
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/Olling/Enrolld/dataaccess/config"
 	"github.com/Olling/Enrolld/utils/objects"
+	"github.com/Olling/slog"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -15,17 +15,21 @@ import (
 )
 
 // GetDbConnection establishes the database connection
-func GetDbConnection() *sqlx.DB {
+func GetDbConnection() (*sqlx.DB, error) {
 	db, err := sqlx.Connect("pgx", "postgresql://"+config.Configuration.DBUser+":"+config.Configuration.DBPass+"@"+config.Configuration.DBHost+":"+config.Configuration.DBPort+"/"+config.Configuration.DBInstance)
 	if err != nil {
-		fmt.Println(err)
+		return nil, err
 	}
-	return db
+	return db, nil
 }
 
 // MigrateDB makes sure the DB exists and migrates it to the latest version
 func MigrateDB() {
-	db := GetDbConnection()
+	db, err := GetDbConnection()
+	if err != nil {
+		slog.PrintFatal("Could not connect to db:", err)
+		return
+	}
 	defer db.Close()
 
 	driver, err := postgres.WithInstance(db.DB, &postgres.Config{})
