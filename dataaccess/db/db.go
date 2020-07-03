@@ -1,8 +1,48 @@
 package db
 
 import (
+	"fmt"
+	"log"
+
+	"github.com/Olling/Enrolld/dataaccess/config"
 	"github.com/Olling/Enrolld/utils/objects"
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/jackc/pgx/stdlib"
+	"github.com/jmoiron/sqlx"
 )
+
+// GetDbConnection establishes the database connection
+func GetDbConnection() *sqlx.DB {
+	db, err := sqlx.Connect("pgx", "postgresql://"+config.Configuration.DBUser+":"+config.Configuration.DBPass+"@"+config.Configuration.DBHost+":"+config.Configuration.DBPort+"/"+config.Configuration.DBInstance)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return db
+}
+
+// MigrateDB makes sure the DB exists and migrates it to the latest version
+func MigrateDB() {
+	db := GetDbConnection()
+	defer db.Close()
+
+	driver, err := postgres.WithInstance(db.DB, &postgres.Config{})
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://./dataaccess/db/migrations",
+		"postgres", driver)
+
+	if err != nil {
+		log.Fatal("DB migration conn failed:", err)
+	}
+
+	err = m.Up()
+	if err != nil {
+		log.Println("DB migration failed:", err)
+	}
+
+}
 
 func LoadAuthentication(users *map[string]objects.User) error {
 	return nil

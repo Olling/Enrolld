@@ -1,22 +1,23 @@
 package config
 
 import (
-	"os"
 	"encoding/json"
+	"os"
+
 	"github.com/Olling/slog"
 )
 
 type configuration struct {
-	FileBackendDirectory	string
-	ScriptDirectory		string
-	EnrollmentScriptPath	string
-	NotificationScriptPath	string
-	TempPath		string
-	LogPath			string
-	Port			string
-	MaxAgeInMinutes		int
-	DefaultInventoryName	string
-	ServerIDRegexp		string
+	FileBackendDirectory   string
+	ScriptDirectory        string
+	EnrollmentScriptPath   string
+	NotificationScriptPath string
+	TempPath               string
+	LogPath                string
+	Port                   string
+	MaxAgeInMinutes        int
+	DefaultInventoryName   string
+	ServerIDRegexp         string
 
 	TargetsPort string
 	TlsPort     string
@@ -25,15 +26,15 @@ type configuration struct {
 	Blacklist   []string
 	Timeout     int
 
-	DBUser			string
-	DBPass			string
-	DBHost			string
-	DBPort			int
-	DBInstance		string
+	DBUser     string
+	DBPass     string
+	DBHost     string
+	DBPort     string
+	DBInstance string
 }
 
 var (
-	Configuration	configuration
+	Configuration configuration
 )
 
 func InitializeConfiguration(path string) {
