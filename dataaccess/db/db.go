@@ -68,6 +68,7 @@ func SaveOverwrites(overwrites interface{}) error {
 func AddOverwrites(server *objects.Server, overwrites map[string]objects.Overwrite) {
 }
 
+// GetServers returns a list of all servers
 func GetServers(overwrites map[string]objects.Overwrite) (servers []objects.Server, err error) {
 	db, err := GetDbConnection()
 	if err != nil {
@@ -83,6 +84,7 @@ func GetServers(overwrites map[string]objects.Overwrite) (servers []objects.Serv
 	return servers, nil
 }
 
+// ServerExist checks if a specific sever exists based on its ID
 func ServerExist(serverID string) bool {
 	db, err := GetDbConnection()
 	if err != nil {
@@ -97,10 +99,23 @@ func ServerExist(serverID string) bool {
 	return exists
 }
 
+// RemoveServer removes a server from the DB based on its ID
 func RemoveServer(serverID string) error {
 	//if err == nil {
 	//	metrics.ServersDeleted.Inc()
 	//}
+	db, err := GetDbConnection()
+	if err != nil {
+		slog.PrintFatal("Could not connect to db:", err)
+		return nil
+	}
+	defer db.Close()
+
+	_, err = db.Exec("DELETE FROM servers WHERE id = $1", serverID)
+	if err != nil {
+		slog.PrintError("Could not delete server", serverID, " Error: ", err)
+	}
+
 	return nil
 }
 
