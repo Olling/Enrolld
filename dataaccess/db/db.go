@@ -120,7 +120,17 @@ func RemoveServer(serverID string) error {
 }
 
 func GetServer(serverID string, overwrites map[string]objects.Overwrite) (server objects.Server, err error) {
-	return server, err
+	db, err := GetDbConnection()
+	if err != nil {
+		return server, err
+	}
+	defer db.Close()
+
+	err = db.Get(&server, "SELECT * FROM servers WHERE ID = $1", serverID)
+	if err != nil {
+		return server, err
+	}
+	return server, nil
 }
 
 func UpdateServer(server objects.Server, isNewServer bool) error {
