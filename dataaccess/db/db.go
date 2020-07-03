@@ -68,12 +68,33 @@ func SaveOverwrites(overwrites interface{}) error {
 func AddOverwrites(server *objects.Server, overwrites map[string]objects.Overwrite) {
 }
 
-func GetServers(overwrites map[string]objects.Overwrite) ([]objects.Server, error) {
-	return []objects.Server{}, nil
+func GetServers(overwrites map[string]objects.Overwrite) (servers []objects.Server, err error) {
+	db, err := GetDbConnection()
+	if err != nil {
+		slog.PrintFatal("Could not connect to db:", err)
+		return
+	}
+	defer db.Close()
+
+	err = db.Get(&servers, "SELECT * FROM servers")
+	if err != nil {
+		return nil, err
+	}
+	return servers, nil
 }
 
 func ServerExist(serverID string) bool {
-	return false
+	db, err := GetDbConnection()
+	if err != nil {
+		slog.PrintFatal("Could not connect to db:", err)
+		return false
+	}
+	defer db.Close()
+
+	var exists bool
+	row := db.QueryRow("SELECT EXISTS(SELECT 1 FROM ...)")
+	row.Scan(&exists)
+	return exists
 }
 
 func RemoveServer(serverID string) error {
