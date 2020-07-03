@@ -15,7 +15,7 @@ func main() {
 	dataaccess.LoadOverwrites()
 	dataaccess.LoadScripts()
 
-	slog.SetLogLevel(slog.Debug)
+	slog.SetLogLevel(slog.Trace)
 
 	scriptPathErr := dataaccess.CheckScriptPath(config.Configuration.EnrollmentScriptPath)
 	if scriptPathErr != nil {

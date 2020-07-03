@@ -1,0 +1,14 @@
+{
+	"ZeOverWrite": {
+		"ServerIDRegexp": "Server1.*",
+		"GroupRegexp": ".*", 
+		"PropertiesRegexp": {
+			"Key": ".*",
+			"Value": ".*"
+		},
+		"Groups": ["ServerNumberUnos"],
+		"Properties": {
+			"WeAre": "NumberOne"
+		}
+	}
+}

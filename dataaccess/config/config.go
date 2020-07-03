@@ -24,6 +24,12 @@ type configuration struct {
 	TlsKey      string
 	Blacklist   []string
 	Timeout     int
+
+	DBUser			string
+	DBPass			string
+	DBHost			string
+	DBPort			int
+	DBInstance		string
 }
 
 var (
