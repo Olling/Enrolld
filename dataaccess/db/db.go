@@ -139,8 +139,22 @@ func MarkServerInactive(server objects.Server) error {
 	return nil
 }
 
-func GetServerCount() float64 {
-	return 0
+// GetServerCount returns server count
+func GetServerCount() (count float64) {
+	db, err := GetDbConnection()
+	if err != nil {
+		slog.PrintFatal("Could not connect to db:", err)
+		return
+	}
+	defer db.Close()
+
+	row := db.QueryRow("SELECT COUNT(*) FROM servers")
+	err = row.Scan(&count)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return count
 }
 
 func GetFilteredServersList(groups []string, properties map[string]string) ([]objects.Server, error) {
