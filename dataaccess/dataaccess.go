@@ -9,7 +9,6 @@ import (
 	"github.com/Olling/slog"
 	"github.com/Olling/Enrolld/metrics"
 	"github.com/Olling/Enrolld/utils/objects"
-	"github.com/Olling/Enrolld/dataaccess/db"
 	"github.com/Olling/Enrolld/dataaccess/config"
 	"github.com/Olling/Enrolld/dataaccess/fileio"
 	"github.com/prometheus/client_golang/prometheus"
@@ -69,8 +68,6 @@ func LoadAuthentication() error {
 	switch Backend {
 		case "file":
 			return fileio.LoadFromFile(&Users, config.Configuration.FileBackendDirectory + "/auth.json")
-		case "db":
-			return db.LoadAuthentication(&Users)
 	}
 	return errors.New("Selected backend is unknown")
 }

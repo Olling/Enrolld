@@ -6,7 +6,6 @@ import (
 	"github.com/Olling/Enrolld/utils"
 	"github.com/Olling/Enrolld/metrics"
 	"github.com/Olling/Enrolld/utils/objects"
-	"github.com/Olling/Enrolld/dataaccess/db"
 	"github.com/Olling/Enrolld/dataaccess/fileio"
 )
 
@@ -30,8 +29,6 @@ func GetServers() ([]objects.Server, error) {
 	switch Backend {
 		case "file":
 			return fileio.GetServers(Overwrites)
-		case "db":
-			return db.GetServers(Overwrites)
 	}
 
 	return nil, errors.New("Selected backend is unknown")
@@ -44,8 +41,6 @@ func GetServer(serverID string) (server objects.Server, err error) {
 	switch Backend {
 		case "file":
 			return fileio.GetServer(serverID, Overwrites)
-		case "db":
-			return db.GetServer(serverID, Overwrites)
 	}
 
 	return server, errors.New("Selected backend is unknown")
@@ -58,8 +53,6 @@ func ServerExist(server objects.Server) bool {
 	switch Backend {
 		case "file":
 			return fileio.ServerExist(server.ServerID)
-		case "db":
-			return db.ServerExist(server.ServerID)
 	}
 
 	return false
@@ -72,14 +65,6 @@ func RemoveServer(serverID string) error {
 	switch Backend {
 		case "file":
 			err := fileio.RemoveServer(serverID)
-			if err == nil {
-				metrics.ServersDeleted.Inc()
-			} else {
-				slog.PrintTrace("Removing server gave the following error:", serverID, err)
-			}
-			return err
-		case "db":
-			err := db.RemoveServer(serverID)
 			if err == nil {
 				metrics.ServersDeleted.Inc()
 			} else {
@@ -130,8 +115,6 @@ func UpdateServer(server objects.Server, isNewServer bool) error {
 
 	switch Backend {
 		case "file":
-			return fileio.UpdateServer(server, isNewServer)
-		case "db":
 			return fileio.UpdateServer(server, isNewServer)
 	}
 
