@@ -20,7 +20,7 @@ do
                 \"group2\"
         ],
         \"Properties\": {
-                \"domain\": \"Olling.local\",
+                \"domain\": \"enrolld.local\",
                 \"environment\": \"internal\"
         }
 }"
