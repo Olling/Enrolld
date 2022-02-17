@@ -1,5 +1,9 @@
 package objects
 
+import (
+	"time"
+)
+
 type User struct {
 	Password		string
 	Encrypted		bool
@@ -41,3 +45,9 @@ type Server struct {
 	Properties	map[string]string
 }
 
+type Job struct {
+	Server Server
+	WorkerID string
+	JobID string
+	Timestamp time.Time
+}
