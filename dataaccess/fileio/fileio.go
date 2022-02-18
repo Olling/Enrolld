@@ -312,36 +312,16 @@ func GetServer(serverID string, overwrites map[string]objects.Overwrite) (server
 	return server, errors.New("Server was beyond max age")
 }
 
-func UpdateServer(server objects.Server, isNewServer bool) error {
+
+func UpdateServer(server objects.Server) (writeerr error) {
 	server.LastSeen = time.Now().String()
 
-	if !ServerExist(server.ServerID) || isNewServer {
-		isNewServer = true
-
-		err := RunScript(config.Configuration.EnrollmentScriptPath,server, "Enroll", config.Configuration.Timeout)
-		if err != nil {
-			slog.PrintError("Error running script against", server.ServerID, "(" + server.IP + "):", err)
-			utils.Notification("Enrolld failure", "Failed to enroll the following new server: " + server.ServerID + "(" + server.IP + ")", server)
-
-			return err
-		} else {
-			slog.PrintInfo("Enrolld script successful: " + server.ServerID)
-		}
-	}
-
-	var writeerr error
 	writeerr = WriteStructToFile(server, config.Configuration.FileBackendDirectory + "/" + server.ServerID, false)
 
-	if writeerr != nil {
-		return writeerr
-	} else {
-		if isNewServer {
-			slog.PrintInfo("Enrolled the following new machine:", server.ServerID, "(" + server.IP + ")")
-			metrics.ServersAdded.Inc()
-		} else {
-			slog.PrintInfo("Updated the following machine:", server.ServerID, "(" + server.IP + ")")
-			metrics.ServersUpdated.Inc()
-		}
+	if writeerr == nil {
+		slog.PrintInfo("Updated the following machine:", server.ServerID, "(" + server.IP + ")")
+		metrics.ServersUpdated.Inc()
 	}
-	return nil
+
+	return writeerr
 }

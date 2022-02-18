@@ -24,5 +24,6 @@ func main() {
 	}
 
 	dataaccess.InitializeAuthentication()
+	dataaccess.InitializeQueue()
 	api.SetupRouter()
 }

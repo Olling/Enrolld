@@ -48,7 +48,7 @@ func GetServer(serverID string) (server objects.Server, err error) {
 
 func ServerExist(server objects.Server) bool {
 	slog.PrintDebug("Checking if server exists")
-	slog.PrintTrace("Checking if the following server exists:", server)
+	slog.PrintTrace(server)
 
 	switch Backend {
 		case "file":
@@ -59,8 +59,7 @@ func ServerExist(server objects.Server) bool {
 }
 
 func RemoveServer(serverID string) error {
-	slog.PrintDebug("Removing server")
-	slog.PrintTrace("Removing server with the following server ID:", serverID)
+	slog.PrintDebug("Removing server with the following server ID:", serverID)
 
 	switch Backend {
 		case "file":
@@ -75,9 +74,10 @@ func RemoveServer(serverID string) error {
 	return errors.New("Selected backend is unknown")
 }
 
+
 func GetFilteredServersList(groups []string, properties map[string]string) ([]objects.Server, error) {
 	slog.PrintDebug("Get filtered server list")
-	slog.PrintTrace("Creating filtered server list form the following information:", groups, properties)
+	slog.PrintTrace(groups, properties)
 
 	servers, err := GetServers()
 	var filteredServers []objects.Server
@@ -109,13 +109,20 @@ func GetFilteredServersList(groups []string, properties map[string]string) ([]ob
 	return filteredServers, nil
 }
 
-func UpdateServer(server objects.Server, isNewServer bool) error {
-	slog.PrintDebug("Updating server")
-	slog.PrintTrace("Updating server with the following information:", isNewServer, server)
+func EnrollServer(server objects.Server) (error) {
+	slog.PrintDebug("Enrolling server:", server.ServerID)
+	slog.PrintTrace(server)
+
+	return AddJob(server)
+}
+
+func UpdateServer(server objects.Server) error {
+	slog.PrintDebug("Updating server:", server.ServerID)
+	slog.PrintTrace(server)
 
 	switch Backend {
 		case "file":
-			return fileio.UpdateServer(server, isNewServer)
+			return fileio.UpdateServer(server)
 	}
 
 	return errors.New("Selected backend is unknown")

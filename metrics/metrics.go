@@ -1,7 +1,6 @@
 package metrics
 
 import (
-//	"github.com/Olling/Enrolld/dataaccess"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -28,4 +27,6 @@ var (
 
 	ServersInInventory prometheus.GaugeFunc
 	DataUsage prometheus.GaugeFunc
+	JobQueueCount prometheus.GaugeFunc
+	WorkingQueueCount prometheus.GaugeFunc
 )

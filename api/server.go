@@ -63,20 +63,7 @@ func updateServer(w http.ResponseWriter, r *http.Request) {
 
 	serverID, err = utils.VerifyFQDN(server.ServerID, requestIP)
 	server.ServerID = serverID
-
-	err = dataaccess.MarkServerActive(server)
-	if err != nil {
-		http.Error(w, "The server is currently active", 208)
-		return
-	}
-
-	defer dataaccess.MarkServerInactive(server)
-
-	if !auth.CheckAccess(w,r, "write", server) {
-		http.Error(w, http.StatusText(401), 401)
-		slog.PrintError("Unauthorized call to update", server.ServerID, "from", requestIP)
-		return
-	}
+	server.IP = requestIP
 
 	for _,regexString := range config.Configuration.Blacklist {
 		slog.PrintDebug("Found regular expression:", regexString)
@@ -88,12 +75,30 @@ func updateServer(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if !auth.CheckAccess(w,r, "write", server) {
+		http.Error(w, http.StatusText(401), 401)
+		slog.PrintError("Unauthorized call to update", server.ServerID, "from", requestIP)
+		return
+	}
+
 	isNewServer := false
+
+	//Enroll server if it does not exist
+	if !dataaccess.ServerExist(server) {
+		isNewServer = true
+	}
+
+	//Enroll server if overwrite is found
 	if strings.ToLower(r.FormValue("NewServer")) == "true" || strings.ToLower(r.FormValue("NewServer")) == "yes" || server.NewServer {
 		isNewServer = true
 	}
 
-	dataaccess.UpdateServer(server, isNewServer)
+	slog.PrintDebug(isNewServer)
+	if isNewServer {
+		dataaccess.EnrollServer(server)
+	} else {
+		dataaccess.UpdateServer(server)
+	}
 }
 
 

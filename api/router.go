@@ -39,15 +39,20 @@ func SetupRouter() {
 	router.HandleFunc("/overwrite", addOverwrite).Methods("POST")
 	router.HandleFunc("/overwrite/{overwriteid}", addOverwrite).Methods("POST")
 
-	router.HandleFunc("/overwrite", deleteOverwrite).Methods("Delete")
-	router.HandleFunc("/overwrite/{overwriteid}", deleteOverwrite).Methods("Delete")
+	router.HandleFunc("/overwrite", deleteOverwrite).Methods("DELETE")
+	router.HandleFunc("/overwrite/{overwriteid}", deleteOverwrite).Methods("DELETE")
 
 	router.HandleFunc("/script", runScript).Methods("POST")
 	router.HandleFunc("/script/{scriptid}/{serverid}", runScript).Methods("POST")
 	router.HandleFunc("/scripts", getScripts).Methods("GET")
 
+	router.HandleFunc("/job/{workerid}", getJob).Methods("GET") 
+	router.HandleFunc("/job/{workerid}/{jobid}/success", finishJob).Methods("DELETE")
+	router.HandleFunc("/job/{workerid}/{jobid}/failure", rescueJob).Methods("DELETE")
+
 	router.HandleFunc("/targets", getTargets).Methods("GET")
 	router.HandleFunc("/inventory", getInventory).Methods("GET")
+
 
 	// add prometheus handler
 	router.Handle("/metrics", promhttp.Handler())

@@ -32,7 +32,7 @@ func getStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if dataaccess.IsServerActive(serverID) {
+	if dataaccess.IsServerIDActive(serverID) {
 		http.Error(w, http.StatusText(208), 208)
 		return
 	}

@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/Olling/slog v0.0.0-20180116151019-27b8b5995183
 	github.com/golang-migrate/migrate/v4 v4.11.0
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.4
 	github.com/jackc/pgx v3.6.2+incompatible
